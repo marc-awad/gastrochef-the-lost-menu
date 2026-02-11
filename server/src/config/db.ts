@@ -8,19 +8,9 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD!,
   {
     host: process.env.DB_HOST,
-    dialect: 'mysql', // <- ici
-    port: Number(process.env.DB_PORT),
-    logging: false,
+    dialect: 'mysql',
+    port: Number(process.env.DB_PORT) || 3306,
   }
 );
-
-export const testConnection = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('✅ Database connected successfully (MySQL/MariaDB)');
-  } catch (error) {
-    console.error('❌ Unable to connect to DB:', error);
-  }
-};
 
 export default sequelize;
