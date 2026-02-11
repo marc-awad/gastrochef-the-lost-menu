@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import sequelize from './config/db'; // <-- import par défaut
+import sequelize from './config/db';
 import authRoutes from './routes/auth';
+import recipeRoutes from './routes/recipes';
+import ingredientRoutes from './routes/ingredients';
 
 dotenv.config();
 
@@ -15,6 +17,8 @@ sequelize.sync().then(() => console.log('Database synced'));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api', recipeRoutes);
+app.use('/api', ingredientRoutes); // ← AJOUTE CETTE LIGNE
 
 // Health check
 app.get('/api/health', (_, res) =>
