@@ -1,6 +1,11 @@
 import { Server, Socket } from 'socket.io';
 import http from 'http';
 import jwt from 'jsonwebtoken';
+import {
+  initOrderSystem,
+  startOrderGeneratorForUser,
+  stopOrderGeneratorForUser,
+} from '../modules/orderGenerator';
 
 // ─── Types ────────────────────────────────────────────────────
 interface AuthenticatedSocket extends Socket {
@@ -20,13 +25,14 @@ export const initSockets = (server: http.Server) => {
     },
   });
 
+  // ── Système de commandes (expiry watcher global) ────────────
+  initOrderSystem(io);
+
   // ══════════════════════════════════════════════════════════
   //  MIDDLEWARE D'AUTHENTIFICATION JWT
-  //  Vérifie le token avant d'autoriser la connexion
   // ══════════════════════════════════════════════════════════
   io.use((socket: AuthenticatedSocket, next) => {
     try {
-      // Le token peut arriver via auth.token ou handshake query
       const token =
         socket.handshake.auth?.token || socket.handshake.query?.token;
 
@@ -60,7 +66,7 @@ export const initSockets = (server: http.Server) => {
 
     console.log(`⚡ [CONNECT] socketId=${socket.id} | userId=${userId}`);
 
-    // ── Rejoindre la room personnelle ───────────────────────
+    // ── Room personnelle ────────────────────────────────────
     const room = userRoom(userId);
     socket.join(room);
     console.log(`🏠 userId=${userId} a rejoint la room "${room}"`);
@@ -73,6 +79,9 @@ export const initSockets = (server: http.Server) => {
       room,
     });
 
+    // ── Démarrer la génération de commandes ─────────────────
+    startOrderGeneratorForUser(io, userId);
+
     // ── Ping / Pong (debug) ─────────────────────────────────
     socket.on('ping', () => {
       console.log(`🏓 Ping reçu de userId=${userId}`);
@@ -84,6 +93,7 @@ export const initSockets = (server: http.Server) => {
       console.log(
         `💤 [DISCONNECT] socketId=${socket.id} | userId=${userId} | raison: ${reason}`
       );
+      stopOrderGeneratorForUser(userId);
     });
 
     // ── Erreur socket ────────────────────────────────────────
