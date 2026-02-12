@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useIngredients, type Ingredient } from '../hooks/useIngredients';
 import { experimentWithIngredients } from '../services/laboratory'; // ✅ NOUVEAU
 import { toast } from 'sonner'; // ✅ NOUVEAU
@@ -12,8 +12,14 @@ import {
   CardTitle,
 } from '../libs/components/ui/card';
 import { Loader2, Beaker, Sparkles } from 'lucide-react';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 export function Laboratory() {
+  // TEST : connexion au socket dès que le composant est monté
+  useEffect(() => {
+    const s = connectSocket();
+    return () => disconnectSocket();
+  }, []);
   const { ingredients, loading, error } = useIngredients();
   const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>(
     []
