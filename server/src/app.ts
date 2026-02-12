@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import http from 'http';
 import sequelize from './config/db';
+import orderRoutes from './routes/order';
 import './models/index';
 import authRoutes from './routes/auth';
 import recipeRoutes from './routes/recipes';
@@ -29,7 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', recipeRoutes);
 app.use('/api', ingredientRoutes);
 app.use('/api/laboratory', laboratoryRoutes);
-
+app.use('/api/orders', orderRoutes);
 // ── Health check ──────────────────────────────────────────────
 app.get('/api/health', (_, res) =>
   res.json({ status: 'ok', message: 'Backend is running' })
