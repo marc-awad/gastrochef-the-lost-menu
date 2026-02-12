@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import { Laboratory } from './pages/Laboratory';
+import { RecipeBook } from './pages/RecipeBook'; // ← NOUVEAU
 import './index.css';
 
 export default function App() {
@@ -29,6 +30,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Laboratory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recipes-book"
+            element={
+              <ProtectedRoute>
+                <RecipeBook />
               </ProtectedRoute>
             }
           />
