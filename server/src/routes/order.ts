@@ -1,15 +1,29 @@
-import { Router } from 'express';
-import { serveOrder, getActiveOrders } from '../controllers/orderController';
+import express from 'express';
+import {
+  serveOrder,
+  getOrders,
+  cleanupExpiredOrders,
+} from '../controllers/orderController';
 import { authMiddleware } from '../middleware/authMiddleware';
 
-const router = Router();
+const router = express.Router();
 
-// ── POST /api/orders/serve ─────────────────────────────────────
-// Servir une commande
-router.post('/serve', authMiddleware, serveOrder);
+/**
+ * 📋 GET /api/orders
+ * Récupérer toutes les commandes en attente de l'utilisateur
+ */
+router.get('/', authMiddleware, getOrders);
 
-// ── GET /api/orders/active ──────────────────────────────────────
-// Récupérer toutes les commandes actives
-router.get('/active', authMiddleware, getActiveOrders);
+/**
+ * 🍽️ POST /api/orders/serve/:orderId
+ * Servir une commande spécifique
+ */
+router.post('/serve/:orderId', authMiddleware, serveOrder);
+
+/**
+ * 🗑️ POST /api/orders/cleanup-expired
+ * Nettoyer les commandes expirées (appel périodique ou manuel)
+ */
+router.post('/cleanup-expired', authMiddleware, cleanupExpiredOrders);
 
 export default router;

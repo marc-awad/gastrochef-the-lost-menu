@@ -42,7 +42,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       });
 
       // Événement quand une commande expire
-      socket.on('order_expired', (data: any) => {
+      socket.on('order_expired', () => {
         setStats((prev) => ({
           ...prev,
           satisfaction: Math.max(0, prev.satisfaction - 10),

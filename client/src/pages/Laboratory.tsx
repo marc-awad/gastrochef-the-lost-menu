@@ -17,7 +17,7 @@ import { connectSocket, disconnectSocket } from '../services/socket';
 export function Laboratory() {
   // TEST : connexion au socket dès que le composant est monté
   useEffect(() => {
-    const s = connectSocket();
+    connectSocket();
     return () => disconnectSocket();
   }, []);
   const { ingredients, loading, error } = useIngredients();

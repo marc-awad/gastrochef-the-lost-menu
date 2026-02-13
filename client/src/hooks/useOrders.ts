@@ -1,120 +1,132 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { getOrders } from '../services/api';
 import { getSocket } from '../services/socket';
-import { useGame } from '../context/GameContext';
-import type { Order, OrderWithTimer } from '../types/order';
-import api from '../services/api';
 
-export function useOrders() {
-  const [orders, setOrders] = useState<OrderWithTimer[]>([]);
-  const [servingOrderId, setServingOrderId] = useState<number | null>(null);
-  const { stats, updateStats, incrementServed, incrementFailed } = useGame();
+interface Order {
+  id: number;
+  recipe_id: number;
+  recipe_name: string;
+  price: number;
+  expires_at: string;
+  is_vip: boolean;
+  created_at?: string;
+}
 
-  // Ajouter une nouvelle commande
-  const addOrder = useCallback((order: Order) => {
-    const expiresAt = new Date(order.expires_at).getTime();
-    const now = Date.now();
-    const remainingSeconds = Math.max(0, Math.floor((expiresAt - now) / 1000));
+/**
+ * 🎯 Hook personnalisé pour gérer les commandes
+ *
+ * Fonctionnalités:
+ * - Récupération initiale des commandes
+ * - Écoute WebSocket pour nouvelles commandes
+ * - Écoute WebSocket pour commandes expirées
+ * - Suppression locale d'une commande
+ */
+export const useOrders = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    setOrders((prev) => [
-      ...prev,
-      {
-        ...order,
-        remainingSeconds,
-      },
-    ]);
-
-    // Notification browser (si autorisée)
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Nouvelle commande !', {
-        body: `${order.recipe_name} - ${order.price}€${order.is_vip ? ' (VIP)' : ''}`,
-        icon: order.is_vip ? '⭐' : '🍽️',
-      });
-    }
-  }, []);
-
-  // Retirer une commande
-  const removeOrder = useCallback((orderId: number) => {
-    setOrders((prev) => prev.filter((o) => o.id !== orderId));
-  }, []);
-
-  // Servir une commande
-  const serveOrder = useCallback(
-    async (orderId: number): Promise<boolean> => {
-      setServingOrderId(orderId);
-
+  /**
+   * 📥 Récupération initiale des commandes
+   */
+  useEffect(() => {
+    const fetchOrders = async () => {
       try {
-        const response = await api.post('/orders/serve', { orderId });
+        setLoading(true);
+        const response = await getOrders();
 
-        if (response.data.success) {
-          removeOrder(orderId);
-          incrementServed();
-
-          // Mettre à jour la satisfaction
-          if (response.data.data?.satisfaction !== undefined) {
-            updateStats({ satisfaction: response.data.data.satisfaction });
-          }
-
-          return true;
+        if (response.success) {
+          setOrders(response.data);
         }
-
-        return false;
-      } catch (error: any) {
-        console.error('❌ Erreur lors du service:', error);
-        alert(
-          error.response?.data?.message || 'Impossible de servir cette commande'
-        );
-        return false;
+      } catch (err: any) {
+        console.error('❌ Erreur lors de la récupération des commandes:', err);
+        setError(err.message || 'Erreur lors du chargement des commandes');
       } finally {
-        setServingOrderId(null);
+        setLoading(false);
       }
-    },
-    [removeOrder, incrementServed, updateStats]
-  );
+    };
 
-  // Écouter les nouvelles commandes via WebSocket
+    fetchOrders();
+  }, []);
+
+  /**
+   * 🔌 Écoute des événements WebSocket
+   */
   useEffect(() => {
     const socket = getSocket();
 
     if (!socket) {
-      console.warn('⚠️ Socket non connecté dans useOrders');
+      console.warn('⚠️ WebSocket non initialisé');
       return;
     }
 
-    socket.on('new_order', addOrder);
+    // 🆕 NOUVELLE COMMANDE
+    const handleNewOrder = (newOrder: Order) => {
+      console.log('🆕 Nouvelle commande reçue:', newOrder);
 
-    socket.on('order_expired', (data: { id: number; recipe_name: string }) => {
-      removeOrder(data.id);
-      incrementFailed();
-    });
+      setOrders((prevOrders) => {
+        // Éviter les doublons
+        const exists = prevOrders.some((order) => order.id === newOrder.id);
+        if (exists) return prevOrders;
 
-    return () => {
-      socket.off('new_order', addOrder);
-      socket.off('order_expired');
-    };
-  }, [addOrder, removeOrder, incrementFailed]);
-
-  // Timer pour décrémenter les secondes restantes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOrders((prev) => {
-        const updated = prev
-          .map((order) => ({
-            ...order,
-            remainingSeconds: Math.max(0, order.remainingSeconds - 1),
-          }))
-          .filter((order) => order.remainingSeconds > 0);
-
-        return updated;
+        // Ajouter la nouvelle commande en début de liste
+        return [newOrder, ...prevOrders];
       });
-    }, 1000);
+    };
 
-    return () => clearInterval(interval);
+    // ⏰ COMMANDE EXPIRÉE
+    const handleOrderExpired = (data: { orderId: number }) => {
+      console.log('⏰ Commande expirée:', data.orderId);
+
+      setOrders((prevOrders) =>
+        prevOrders.filter((order) => order.id !== data.orderId)
+      );
+    };
+
+    // 📢 INSCRIPTION AUX ÉVÉNEMENTS
+    socket.on('new_order', handleNewOrder);
+    socket.on('order_expired', handleOrderExpired);
+
+    // 🧹 NETTOYAGE
+    return () => {
+      socket.off('new_order', handleNewOrder);
+      socket.off('order_expired', handleOrderExpired);
+    };
   }, []);
+
+  /**
+   * 🗑️ Supprimer une commande localement (après service)
+   */
+  const removeOrder = (orderId: number) => {
+    setOrders((prevOrders) =>
+      prevOrders.filter((order) => order.id !== orderId)
+    );
+  };
+
+  /**
+   * 🔄 Rafraîchir manuellement les commandes
+   */
+  const refreshOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await getOrders();
+
+      if (response.success) {
+        setOrders(response.data);
+      }
+    } catch (err: any) {
+      console.error('❌ Erreur lors du rafraîchissement:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return {
     orders,
-    servingOrderId,
-    stats,
-    serveOrder,
+    loading,
+    error,
+    removeOrder,
+    refreshOrders,
   };
-}
+};

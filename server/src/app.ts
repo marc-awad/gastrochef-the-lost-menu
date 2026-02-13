@@ -8,7 +8,7 @@ import './models/index';
 import authRoutes from './routes/auth';
 import recipeRoutes from './routes/recipes';
 import ingredientRoutes from './routes/ingredients';
-import laboratoryRoutes from './routes/laboratory';
+import laboratoryRoutes from './routes/laboratory';7
 import { initSockets } from './sockets/index';
 
 dotenv.config();

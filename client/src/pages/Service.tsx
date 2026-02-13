@@ -1,21 +1,35 @@
 import { useEffect } from 'react';
-import OrderQueue from '../components/OrderQueue';
+import { OrderQueue } from '../components/OrderQueue';
 import { Card } from '../libs/components/ui/card';
 import { Star, TrendingUp, TrendingDown } from 'lucide-react';
 import { connectSocket } from '../services/socket';
 import { useGame } from '../context/GameContext';
+import { useOrders } from '../hooks/useOrders'; // ✅ Import du hook
+import { toast } from 'sonner';
 
 export default function Service() {
   const { stats } = useGame();
+  const { orders, removeOrder } = useOrders(); // ✅ Utiliser le hook
 
   // Connecter le socket au montage du composant
   useEffect(() => {
-    const socket = connectSocket();
-
-    return () => {
-      // Ne pas déconnecter ici pour garder la connexion active
-    };
+    connectSocket();
   }, []);
+
+  // Handler quand une commande est servie
+  const handleOrderServed = (orderId: number) => {
+    removeOrder(orderId); // ✅ Utiliser la fonction du hook
+  };
+
+  // Handler pour les erreurs
+  const handleError = (message: string) => {
+    toast.error(message);
+  };
+
+  // Handler pour le Game Over
+  const handleGameOver = () => {
+    console.log('Game Over déclenché depuis OrderQueue');
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
@@ -90,7 +104,12 @@ export default function Service() {
         </div>
 
         {/* File d'attente des commandes */}
-        <OrderQueue />
+        <OrderQueue
+          orders={orders}
+          onOrderServed={handleOrderServed}
+          onError={handleError}
+          onGameOver={handleGameOver}
+        />
 
         {/* Game Over */}
         {stats.satisfaction <= 0 && (
