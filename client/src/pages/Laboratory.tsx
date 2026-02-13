@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useIngredients, type Ingredient } from '../hooks/useIngredients';
-import { experimentWithIngredients } from '../services/laboratory'; // ✅ NOUVEAU
-import { toast } from 'sonner'; // ✅ NOUVEAU
+import { experimentWithIngredients } from '../services/laboratory';
+import { toast } from 'sonner';
 import { IngredientCard } from '../components/IngredientCard';
 import { DropZone } from '../components/DropZone';
 import { Button } from '../libs/components/ui/button';
@@ -12,14 +12,10 @@ import {
   CardTitle,
 } from '../libs/components/ui/card';
 import { Loader2, Beaker, Sparkles } from 'lucide-react';
-import { connectSocket, disconnectSocket } from '../services/socket';
+
+// ✅ Plus d'import socket ici — géré globalement dans AuthContext
 
 export function Laboratory() {
-  // TEST : connexion au socket dès que le composant est monté
-  useEffect(() => {
-    connectSocket();
-    return () => disconnectSocket();
-  }, []);
   const { ingredients, loading, error } = useIngredients();
   const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>(
     []
@@ -28,7 +24,7 @@ export function Laboratory() {
     null
   );
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [isExperimenting, setIsExperimenting] = useState(false); // ✅ NOUVEAU
+  const [isExperimenting, setIsExperimenting] = useState(false);
 
   const handleDragStart = (e: React.DragEvent, ingredient: Ingredient) => {
     setDraggedIngredient(ingredient);
@@ -68,7 +64,6 @@ export function Laboratory() {
     );
   };
 
-  // ✅ NOUVELLE FONCTION
   const handleExperiment = async () => {
     if (selectedIngredients.length < 2) return;
 
@@ -83,7 +78,7 @@ export function Laboratory() {
           description: `Vous avez découvert : ${result.recipe?.name} (${result.recipe?.sale_price}€)`,
           duration: 5000,
         });
-        setSelectedIngredients([]); // Reset après succès
+        setSelectedIngredients([]);
       } else if (result.success && result.alreadyKnown) {
         toast.info(result.message, {
           description: `Recette : ${result.recipe?.name}`,

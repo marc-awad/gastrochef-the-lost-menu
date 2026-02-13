@@ -1,21 +1,21 @@
 import { Server, Socket } from 'socket.io';
 import http from 'http';
 import jwt from 'jsonwebtoken';
+import { Op } from 'sequelize';
+import { User } from '../models/User';
+import { Order } from '../models/Order';
 import {
   initOrderSystem,
   startOrderGeneratorForUser,
   stopOrderGeneratorForUser,
 } from '../modules/orderGenerator';
 
-// ─── Types ────────────────────────────────────────────────────
 interface AuthenticatedSocket extends Socket {
   userId?: number;
 }
 
-// ─── Helper : room d'un utilisateur ──────────────────────────
 export const userRoom = (userId: number) => `user:${userId}`;
 
-// ─── Init Socket.io ──────────────────────────────────────────
 export const initSockets = (server: http.Server) => {
   const io = new Server(server, {
     cors: {
@@ -25,53 +25,68 @@ export const initSockets = (server: http.Server) => {
     },
   });
 
-  // ── Système de commandes (expiry watcher global) ────────────
   initOrderSystem(io);
 
-  // ══════════════════════════════════════════════════════════
-  //  MIDDLEWARE D'AUTHENTIFICATION JWT
-  // ══════════════════════════════════════════════════════════
   io.use((socket: AuthenticatedSocket, next) => {
     try {
       const token =
         socket.handshake.auth?.token || socket.handshake.query?.token;
-
-      if (!token) {
-        console.warn('🔒 Socket rejeté : pas de token');
-        return next(new Error('Authentication error: no token provided'));
-      }
+      if (!token) return next(new Error('Authentication error: no token'));
 
       const secret = process.env.JWT_SECRET;
-      if (!secret) {
-        console.error('❌ JWT_SECRET manquant dans .env');
-        return next(new Error('Server configuration error'));
-      }
+      if (!secret) return next(new Error('Server configuration error'));
 
       const decoded = jwt.verify(token as string, secret) as { id: number };
       socket.userId = decoded.id;
-
-      console.log(`🔑 Socket auth OK — userId: ${decoded.id}`);
       next();
     } catch (err) {
-      console.warn('🔒 Socket rejeté : token invalide', (err as Error).message);
       next(new Error('Authentication error: invalid token'));
     }
   });
 
-  // ══════════════════════════════════════════════════════════
-  //  CONNEXION
-  // ══════════════════════════════════════════════════════════
-  io.on('connection', (socket: AuthenticatedSocket) => {
+  io.on('connection', async (socket: AuthenticatedSocket) => {
     const userId = socket.userId!;
-
     console.log(`⚡ [CONNECT] socketId=${socket.id} | userId=${userId}`);
 
-    // ── Room personnelle ────────────────────────────────────
+    // ✅ NOUVEAU : Nettoyer les vieilles commandes pending expirées SANS pénalité
+    // Elles datent d'une session précédente — les pénaliser maintenant serait injuste
+    try {
+      const cleaned = await Order.destroy({
+        where: {
+          user_id: userId,
+          status: 'pending',
+          expires_at: { [Op.lt]: new Date() },
+        },
+      });
+      if (cleaned > 0) {
+        console.log(
+          `🧹 [CONNECT] ${cleaned} vieille(s) commande(s) pending nettoyée(s) sans pénalité pour userId=${userId}`
+        );
+      }
+    } catch (err) {
+      console.error(`❌ [CONNECT] Erreur nettoyage vieilles commandes:`, err);
+    }
+
     const room = userRoom(userId);
     socket.join(room);
-    console.log(`🏠 userId=${userId} a rejoint la room "${room}"`);
 
-    // ── Confirmation au client ──────────────────────────────
+    // ✅ NOUVEAU : Envoyer les vraies stats depuis la BDD au moment de la connexion
+    try {
+      const user = await User.findByPk(userId);
+      if (user) {
+        console.log(
+          `📊 [CONNECT] Stats BDD userId=${userId} — satisfaction=${user.satisfaction} | treasury=${user.treasury} | stars=${user.stars}`
+        );
+        socket.emit('stats_update', {
+          satisfaction: user.satisfaction,
+          treasury: user.treasury,
+          stars: user.stars,
+        });
+      }
+    } catch (err) {
+      console.error(`❌ [CONNECT] Erreur récupération stats:`, err);
+    }
+
     socket.emit('connected', {
       message: 'Connexion WebSocket établie',
       userId,
@@ -79,16 +94,10 @@ export const initSockets = (server: http.Server) => {
       room,
     });
 
-    // ── Démarrer la génération de commandes ─────────────────
     startOrderGeneratorForUser(io, userId);
 
-    // ── Ping / Pong (debug) ─────────────────────────────────
-    socket.on('ping', () => {
-      console.log(`🏓 Ping reçu de userId=${userId}`);
-      socket.emit('pong', { timestamp: Date.now() });
-    });
+    socket.on('ping', () => socket.emit('pong', { timestamp: Date.now() }));
 
-    // ── Déconnexion ─────────────────────────────────────────
     socket.on('disconnect', (reason) => {
       console.log(
         `💤 [DISCONNECT] socketId=${socket.id} | userId=${userId} | raison: ${reason}`
@@ -96,7 +105,6 @@ export const initSockets = (server: http.Server) => {
       stopOrderGeneratorForUser(userId);
     });
 
-    // ── Erreur socket ────────────────────────────────────────
     socket.on('error', (err) => {
       console.error(
         `❌ [ERROR] socketId=${socket.id} | userId=${userId}`,

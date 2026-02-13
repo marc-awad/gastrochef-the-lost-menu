@@ -5,6 +5,7 @@ import {
   cleanupExpiredOrders,
 } from '../controllers/orderController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { resetGame } from '../controllers/resetController';
 
 const router = express.Router();
 
@@ -25,5 +26,6 @@ router.post('/serve/:orderId', authMiddleware, serveOrder);
  * Nettoyer les commandes expirées (appel périodique ou manuel)
  */
 router.post('/cleanup-expired', authMiddleware, cleanupExpiredOrders);
+router.post('/reset', authMiddleware, resetGame);
 
 export default router;

@@ -1,45 +1,61 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
+import './index.css';
 import { AuthProvider } from './context/AuthContext';
-import Register from './pages/Register';
-import Login from './pages/Login';
+import { GameProvider } from './context/GameContext';
+import { GameOverListener } from './components/GameOverListener';
+import { Navbar } from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
+import { Toaster } from 'sonner';
+
+// Pages
 import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import { Laboratory } from './pages/Laboratory';
 import { RecipeBook } from './pages/RecipeBook';
-import { GameProvider } from './context/GameContext';
 import Service from './pages/Service';
-import './index.css';
+import GameOver from './pages/GameOver';
 
-export default function App() {
+function App() {
   return (
     <AuthProvider>
       <GameProvider>
         <Router>
-          <Toaster position="top-center" richColors />
+          {/* ✅ NOUVEAU : Listener pour Game Over (doit être dans Router) */}
+          <GameOverListener />
+
+          {/* Toast notifications */}
+          <Toaster position="top-right" richColors />
+
           <Routes>
-            <Route path="/register" element={<Register />} />
+            {/* Routes Publiques */}
+            <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Home />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/register" element={<Register />} />
+
+            {/* ✅ NOUVEAU : Route Game Over (accessible sans protection) */}
+            <Route path="/game-over" element={<GameOver />} />
+
+            {/* Routes Protégées avec Navbar */}
             <Route
               path="/laboratory"
               element={
                 <ProtectedRoute>
+                  <Navbar />
                   <Laboratory />
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/recipes-book"
+              path="/recipes"
               element={
                 <ProtectedRoute>
+                  <Navbar />
                   <RecipeBook />
                 </ProtectedRoute>
               }
@@ -48,13 +64,19 @@ export default function App() {
               path="/service"
               element={
                 <ProtectedRoute>
+                  <Navbar />
                   <Service />
                 </ProtectedRoute>
               }
             />
+
+            {/* Redirection par défaut */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
       </GameProvider>
     </AuthProvider>
   );
 }
+
+export default App;

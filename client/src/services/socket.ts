@@ -8,8 +8,10 @@ let socket: Socket | null = null;
 
 // ─── Connexion authentifiée ───────────────────────────────────
 export const connectSocket = (): Socket => {
-  if (socket?.connected) {
-    console.log('⚡ Socket déjà connecté');
+  // ✅ Guard corrigé : on réutilise le socket s'il existe,
+  // qu'il soit en cours de connexion OU déjà connecté
+  if (socket) {
+    console.log('⚡ Socket déjà initialisé (id:', socket.id, ')');
     return socket;
   }
 
@@ -18,14 +20,15 @@ export const connectSocket = (): Socket => {
     throw new Error('Impossible de connecter le socket : pas de token JWT');
   }
 
+  console.log("🔌 Création d'un nouveau socket...");
+
   socket = io(SOCKET_URL, {
-    auth: { token }, // ← envoyé au middleware JWT côté serveur
-    transports: ['websocket'], // évite le fallback polling
+    auth: { token },
+    transports: ['websocket'],
     reconnectionAttempts: 5,
     reconnectionDelay: 2000,
   });
 
-  // ── Événements de base ──────────────────────────────────────
   socket.on('connect', () => {
     console.log('⚡ [SOCKET] Connecté — id:', socket?.id);
   });
@@ -36,13 +39,17 @@ export const connectSocket = (): Socket => {
 
   socket.on('disconnect', (reason) => {
     console.warn('💤 [SOCKET] Déconnecté :', reason);
+    // ✅ Si déconnexion involontaire (pas un logout),
+    // on garde la référence pour la reconnexion auto
+    if (reason === 'io client disconnect') {
+      socket = null; // Seulement si c'est nous qui avons appelé disconnect()
+    }
   });
 
   socket.on('connect_error', (err) => {
     console.error('❌ [SOCKET] Erreur de connexion :', err.message);
   });
 
-  // ── Pong (debug) ────────────────────────────────────────────
   socket.on('pong', (data) => {
     console.log('🏓 [SOCKET] Pong reçu :', data);
   });
@@ -50,7 +57,7 @@ export const connectSocket = (): Socket => {
   return socket;
 };
 
-// ─── Déconnexion propre ───────────────────────────────────────
+// ─── Déconnexion propre (logout uniquement) ───────────────────
 export const disconnectSocket = (): void => {
   if (socket) {
     socket.disconnect();
@@ -62,7 +69,6 @@ export const disconnectSocket = (): void => {
 // ─── Accès à l'instance courante ─────────────────────────────
 export const getSocket = (): Socket | null => socket;
 
-// ─── Helper : envoyer un ping (debug) ────────────────────────
 export const sendPing = (): void => {
   if (socket?.connected) {
     socket.emit('ping');

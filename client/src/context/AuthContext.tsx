@@ -1,6 +1,7 @@
-import { createContext, useState, useContext } from 'react';
+import { createContext, useState, useContext, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import axios from '../services/api';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 type AuthContextType = {
   token: string | null;
@@ -19,11 +20,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(() =>
     localStorage.getItem('token')
   );
+  // ✅ Ref pour éviter le double-appel de React StrictMode
+  const socketInitialized = useRef(false);
+
+  useEffect(() => {
+    if (token) {
+      if (!socketInitialized.current) {
+        socketInitialized.current = true;
+        connectSocket();
+      }
+    } else {
+      socketInitialized.current = false;
+      disconnectSocket();
+    }
+
+    // ✅ Pas de cleanup qui disconnecte ici —
+    // StrictMode appelle cleanup puis re-exécute l'effect,
+    // sans cleanup de disconnect on évite le cycle connect/disconnect/connect
+  }, [token]);
 
   const login = async (email: string, password: string) => {
     const res = await axios.post('/auth/login', { email, password });
-    setToken(res.data.token);
     localStorage.setItem('token', res.data.token);
+    setToken(res.data.token);
   };
 
   const register = async (
@@ -36,13 +55,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password,
     });
-    setToken(res.data.token);
     localStorage.setItem('token', res.data.token);
+    setToken(res.data.token);
   };
 
   const logout = () => {
-    setToken(null);
     localStorage.removeItem('token');
+    socketInitialized.current = false;
+    setToken(null);
   };
 
   return (

@@ -8,8 +8,11 @@ import './models/index';
 import authRoutes from './routes/auth';
 import recipeRoutes from './routes/recipes';
 import ingredientRoutes from './routes/ingredients';
-import laboratoryRoutes from './routes/laboratory';7
+import laboratoryRoutes from './routes/laboratory';
 import { initSockets } from './sockets/index';
+// ✅ SUPPRIMÉ : startOrderExpirationChecker — le système d'expiration
+// est déjà géré dans orderGenerator.ts via startExpiryWatcher()
+// Importer les deux causait des pénalités doublées (voire x10)
 
 dotenv.config();
 
@@ -31,16 +34,16 @@ app.use('/api', recipeRoutes);
 app.use('/api', ingredientRoutes);
 app.use('/api/laboratory', laboratoryRoutes);
 app.use('/api/orders', orderRoutes);
+
 // ── Health check ──────────────────────────────────────────────
 app.get('/api/health', (_, res) =>
   res.json({ status: 'ok', message: 'Backend is running' })
 );
 
 // ── Serveur HTTP + Socket.io ──────────────────────────────────
-// IMPORTANT : on crée un http.Server à partir d'express
-// pour que Socket.io puisse s'y attacher sur le même port
 const server = http.createServer(app);
 export const io = initSockets(server);
+// ✅ Le système d'expiration est lancé dans initSockets → initOrderSystem → startExpiryWatcher
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () =>
