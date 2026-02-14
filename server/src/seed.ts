@@ -29,7 +29,9 @@ import { Ingredient, Recipe, RecipeIngredient } from './models';
 
 async function seed() {
   await sequelize.sync({ force: true });
-  console.log('✅ Tables synchronisées');
+  console.log(
+    '✅ Tables synchronisées (force: true — toutes les tables recréées)'
+  );
 
   // ──────────────────────────────────────────────
   //  20 INGRÉDIENTS
@@ -67,65 +69,68 @@ async function seed() {
   //    ⭐⭐   = 3 ingrédients  (intermédiaire)
   //    ⭐⭐⭐  = 4 ingrédients  (avancé)
   //    ⭐⭐⭐⭐ = 5-6 ingrédients (expert)
+  //
+  //  Tous les prix garantissent une marge > 30% :
+  //  marge = (prix_vente - coût_ingrédients) / prix_vente
   // ──────────────────────────────────────────────
   const recipesData = [
     // ── NIVEAU ⭐ : 2 ingrédients ──────────────────────────────
-    { name: 'Œufs au beurre', sale_price: 3 }, // 1
-    { name: 'Salade tomate-oignon', sale_price: 3 }, // 2
-    { name: 'Pâtes au beurre', sale_price: 3 }, // 3
-    { name: 'Riz au lait', sale_price: 3 }, // 4
-    { name: 'Saumon au beurre', sale_price: 7 }, // 5
-    { name: 'Steak poivré', sale_price: 8 }, // 6
-    { name: 'Tomate-fromage', sale_price: 4 }, // 7
-    { name: 'Carotte-oignon sauté', sale_price: 3 }, // 8
-    { name: 'Champignons sautés', sale_price: 4 }, // 9
-    { name: 'Bacon croustillant', sale_price: 5 }, // 10
+    { name: 'Œufs au beurre', sale_price: 3.0 }, // 1  — coût=1.00, marge=66.7%
+    { name: 'Salade tomate-oignon', sale_price: 3.0 }, // 2  — coût=1.40, marge=53.3%
+    { name: 'Pâtes au beurre', sale_price: 3.5 }, // 3  — coût=2.30, marge=34.3% ✅ CORRIGÉ
+    { name: 'Riz au lait', sale_price: 4.5 }, // 4  — coût=3.00, marge=33.3% ✅ CORRIGÉ
+    { name: 'Saumon au beurre', sale_price: 7.0 }, // 5  — coût=3.00, marge=57.1%
+    { name: 'Steak poivré', sale_price: 8.0 }, // 6  — coût=3.05, marge=61.9%
+    { name: 'Tomate-fromage', sale_price: 4.0 }, // 7  — coût=2.20, marge=45.0%
+    { name: 'Carotte-oignon sauté', sale_price: 3.0 }, // 8  — coût=1.10, marge=63.3%
+    { name: 'Champignons sautés', sale_price: 4.0 }, // 9  — coût=1.70, marge=57.5%
+    { name: 'Bacon croustillant', sale_price: 5.0 }, // 10 — coût=3.05, marge=39.0%
 
     // ── NIVEAU ⭐⭐ : 3 ingrédients ────────────────────────────
-    { name: 'Omelette simple', sale_price: 5 }, // 11
-    { name: 'Poulet sauté', sale_price: 7 }, // 12
-    { name: 'Soupe carotte', sale_price: 5 }, // 13
-    { name: 'Purée maison', sale_price: 5 }, // 14
-    { name: 'Riz sauté simple', sale_price: 5 }, // 15
-    { name: 'Pâtes sauce tomate', sale_price: 5 }, // 16
-    { name: 'Salade cesar basique', sale_price: 6 }, // 17
-    { name: 'Champignons à la crème', sale_price: 6 }, // 18
-    { name: 'Salade thon-tomate', sale_price: 6 }, // 19
-    { name: 'Escalope crème', sale_price: 8 }, // 20
-    { name: 'Poisson sel-beurre', sale_price: 7 }, // 21
-    { name: 'Omelette fromage', sale_price: 6 }, // 22
-    { name: 'Soupe oignon', sale_price: 5 }, // 23
-    { name: 'Riz poulet basique', sale_price: 7 }, // 24
-    { name: 'Pâtes carbonara simple', sale_price: 6 }, // 25
+    { name: 'Omelette simple', sale_price: 5.0 }, // 11 — coût=1.30, marge=74.0%
+    { name: 'Poulet sauté', sale_price: 7.0 }, // 12 — coût=2.45, marge=65.0%
+    { name: 'Soupe carotte', sale_price: 5.0 }, // 13 — coût=1.50, marge=70.0%
+    { name: 'Purée maison', sale_price: 5.0 }, // 14 — coût=2.50, marge=50.0%
+    { name: 'Riz sauté simple', sale_price: 5.0 }, // 15 — coût=2.00, marge=60.0%
+    { name: 'Pâtes sauce tomate', sale_price: 5.0 }, // 16 — coût=2.80, marge=44.0%
+    { name: 'Salade cesar basique', sale_price: 6.0 }, // 17 — coût=3.20, marge=46.7%
+    { name: 'Champignons à la crème', sale_price: 6.0 }, // 18 — coût=1.85, marge=69.2%
+    { name: 'Salade thon-tomate', sale_price: 6.0 }, // 19 — coût=2.50, marge=58.3%
+    { name: 'Escalope crème', sale_price: 8.0 }, // 20 — coût=3.40, marge=57.5%
+    { name: 'Poisson sel-beurre', sale_price: 7.0 }, // 21 — coût=3.05, marge=56.4%
+    { name: 'Omelette fromage', sale_price: 6.0 }, // 22 — coût=2.45, marge=59.2%
+    { name: 'Soupe oignon', sale_price: 5.0 }, // 23 — coût=1.70, marge=66.0%
+    { name: 'Riz poulet basique', sale_price: 7.0 }, // 24 — coût=3.45, marge=50.7%
+    { name: 'Pâtes carbonara simple', sale_price: 8.0 }, // 25 — coût=5.30, marge=33.8% ✅ CORRIGÉ
 
     // ── NIVEAU ⭐⭐⭐ : 4 ingrédients ──────────────────────────
-    { name: 'Omelette complète', sale_price: 7 }, // 26
-    { name: 'Burger classique', sale_price: 8 }, // 27
-    { name: 'Salade composée', sale_price: 6 }, // 28
-    { name: 'Riz cantonais', sale_price: 7 }, // 29
-    { name: 'Poulet chasseur', sale_price: 10 }, // 30
-    { name: 'Poisson grillé', sale_price: 10 }, // 31
-    { name: 'Tarte thon-tomate', sale_price: 8 }, // 32
-    { name: 'Gratin de pâtes', sale_price: 7 }, // 33
-    { name: 'Saumon crème-champignon', sale_price: 12 }, // 34
-    { name: 'Boeuf carotte', sale_price: 11 }, // 35
-    { name: 'Poulet rôti simple', sale_price: 9 }, // 36
-    { name: 'Riz sauté légumes', sale_price: 7 }, // 37
-    { name: 'Pâtes bacon-crème', sale_price: 8 }, // 38
-    { name: 'Salade niçoise', sale_price: 8 }, // 39
-    { name: 'Gratin de pommes de terre', sale_price: 8 }, // 40
+    { name: 'Omelette complète', sale_price: 7.0 }, // 26 — coût=1.35, marge=80.7%
+    { name: 'Burger classique', sale_price: 8.0 }, // 27 — coût=5.10, marge=36.3%
+    { name: 'Salade composée', sale_price: 6.0 }, // 28 — coût=1.95, marge=67.5%
+    { name: 'Riz cantonais', sale_price: 7.0 }, // 29 — coût=2.80, marge=60.0%
+    { name: 'Poulet chasseur', sale_price: 10.0 }, // 30 — coût=3.60, marge=64.0%
+    { name: 'Poisson grillé', sale_price: 10.0 }, // 31 — coût=3.60, marge=64.0%
+    { name: 'Tarte thon-tomate', sale_price: 8.0 }, // 32 — coût=3.50, marge=56.3%
+    { name: 'Gratin de pâtes', sale_price: 7.0 }, // 33 — coût=4.25, marge=39.3%
+    { name: 'Saumon crème-champignon', sale_price: 12.0 }, // 34 — coût=4.20, marge=65.0%
+    { name: 'Boeuf carotte', sale_price: 11.0 }, // 35 — coût=4.50, marge=59.1%
+    { name: 'Poulet rôti simple', sale_price: 9.0 }, // 36 — coût=2.60, marge=71.1%
+    { name: 'Riz sauté légumes', sale_price: 7.0 }, // 37 — coût=2.75, marge=60.7%
+    { name: 'Pâtes bacon-crème', sale_price: 9.5 }, // 38 — coût=6.60, marge=30.5% ✅ CORRIGÉ
+    { name: 'Salade niçoise', sale_price: 8.0 }, // 39 — coût=2.90, marge=63.8%
+    { name: 'Gratin de pommes de terre', sale_price: 8.0 }, // 40 — coût=3.00, marge=62.5%
 
     // ── NIVEAU ⭐⭐⭐⭐ : 5-6 ingrédients ──────────────────────
-    { name: 'Pizza', sale_price: 9 }, // 41
-    { name: 'Spaghetti Carbonara', sale_price: 9 }, // 42
-    { name: 'Poulet rôti complet', sale_price: 13 }, // 43
-    { name: 'Quiche Lorraine', sale_price: 9 }, // 44
-    { name: 'Soupe de légumes', sale_price: 7 }, // 45
-    { name: 'Hachis Parmentier', sale_price: 11 }, // 46
-    { name: 'Riz sauté complet', sale_price: 9 }, // 47
-    { name: 'Gratin dauphinois', sale_price: 10 }, // 48
-    { name: 'Spaghetti bolognaise', sale_price: 10 }, // 49
-    { name: 'Poulet basquaise', sale_price: 12 }, // 50
+    { name: 'Pizza', sale_price: 9.0 }, // 41 — coût=4.60, marge=48.9%
+    { name: 'Spaghetti Carbonara', sale_price: 9.5 }, // 42 — coût=6.55, marge=31.1% ✅ CORRIGÉ
+    { name: 'Poulet rôti complet', sale_price: 13.0 }, // 43 — coût=4.20, marge=67.7%
+    { name: 'Quiche Lorraine', sale_price: 9.0 }, // 44 — coût=5.30, marge=41.1%
+    { name: 'Soupe de légumes', sale_price: 7.0 }, // 45 — coût=2.80, marge=60.0%
+    { name: 'Hachis Parmentier', sale_price: 11.0 }, // 46 — coût=5.65, marge=48.6%
+    { name: 'Riz sauté complet', sale_price: 9.0 }, // 47 — coût=3.75, marge=58.3%
+    { name: 'Gratin dauphinois', sale_price: 10.0 }, // 48 — coût=4.20, marge=58.0%
+    { name: 'Spaghetti bolognaise', sale_price: 10.0 }, // 49 — coût=6.85, marge=31.5%
+    { name: 'Poulet basquaise', sale_price: 12.0 }, // 50 — coût=4.65, marge=61.3%
   ];
 
   await Recipe.bulkCreate(recipesData);
@@ -435,6 +440,8 @@ async function seed() {
   console.log('🎉 Seed terminé avec succès !');
   console.log('   📦 20 ingrédients');
   console.log('   🍽️  50 recettes (10x⭐ / 15x⭐⭐ / 15x⭐⭐⭐ / 10x⭐⭐⭐⭐)');
+  console.log('   💰 Tous les prix garantissent une marge > 30%');
+  console.log('   🗄️  Tables transactions et inventory créées (vides)');
   console.log('');
   console.log('   GUIDE DE DÉCOUVERTE RAPIDE (pour tester) :');
   console.log('   ⭐  Œuf(10) + Beurre(11)            → Œufs au beurre');
@@ -443,6 +450,10 @@ async function seed() {
   console.log('   ⭐⭐ Œuf(10)+Beurre(11)+Sel(12)       → Omelette simple');
   console.log('   ⭐⭐ Pâtes(14)+Bacon(16)+Œuf(10)      → Carbonara simple');
   console.log('   ⭐⭐⭐ Bœuf(7)+Fromage(2)+Tomate(1)+Oignon(4) → Burger');
+  console.log('');
+  console.log('   NOUVELLES TABLES CRÉÉES (niveau 16/20) :');
+  console.log('   📒 transactions — historique financier');
+  console.log("   📦 inventory    — stock d'ingrédients par joueur");
 
   process.exit(0);
 }

@@ -4,6 +4,8 @@ import { RecipeIngredient } from './RecipeIngredient';
 import { User } from './User';
 import { UserDiscoveredRecipe } from './UserDiscoveredRecipe';
 import { Order } from './Order';
+import { Transaction } from './Transaction';
+import { Inventory } from './Inventory';
 
 // ========================================
 // ASSOCIATIONS RECIPE <-> INGREDIENT
@@ -77,13 +79,34 @@ Recipe.hasMany(UserDiscoveredRecipe, {
 // ASSOCIATIONS ORDER
 // ========================================
 
-// Order appartient à un User
 Order.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 User.hasMany(Order, { foreignKey: 'user_id', as: 'orders' });
 
-// Order appartient à une Recipe
 Order.belongsTo(Recipe, { foreignKey: 'recipe_id', as: 'recipe' });
 Recipe.hasMany(Order, { foreignKey: 'recipe_id', as: 'orders' });
+
+// ========================================
+// ASSOCIATIONS TRANSACTION
+// ========================================
+
+Transaction.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(Transaction, { foreignKey: 'user_id', as: 'transactions' });
+
+// ========================================
+// ASSOCIATIONS INVENTORY
+// ========================================
+
+Inventory.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(Inventory, { foreignKey: 'user_id', as: 'inventory' });
+
+Inventory.belongsTo(Ingredient, {
+  foreignKey: 'ingredient_id',
+  as: 'ingredient',
+});
+Ingredient.hasMany(Inventory, {
+  foreignKey: 'ingredient_id',
+  as: 'inventoryEntries',
+});
 
 // ========================================
 // EXPORTS
@@ -96,4 +119,6 @@ export {
   User,
   UserDiscoveredRecipe,
   Order,
+  Transaction,
+  Inventory,
 };
