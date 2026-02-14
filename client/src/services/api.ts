@@ -139,4 +139,78 @@ export const cleanupExpiredOrders = async (): Promise<any> => {
   }
 };
 
+// ========================================
+// 🛒 TYPES MARKETPLACE / INVENTORY
+// ========================================
+
+export interface BuyIngredientResponse {
+  success: boolean;
+  message: string;
+  data: {
+    ingredientName: string;
+    quantity: number;
+    totalCost: number;
+    newTreasury: number;
+  };
+}
+
+export interface InventoryItem {
+  id: number;
+  ingredient_id: number;
+  quantity: number;
+  purchased_at: string;
+  ingredient: {
+    id: number;
+    name: string;
+    price: number;
+  };
+}
+
+export interface GetInventoryResponse {
+  success: boolean;
+  data: InventoryItem[];
+}
+
+// ========================================
+// 🛒 FONCTIONS API MARKETPLACE
+// ========================================
+
+/**
+ * 🛒 Acheter des ingrédients
+ *
+ * @param ingredientId - ID de l'ingrédient à acheter
+ * @param quantity - Quantité souhaitée
+ */
+export const buyIngredient = async (
+  ingredientId: number,
+  quantity: number
+): Promise<BuyIngredientResponse> => {
+  try {
+    const response = await api.post<BuyIngredientResponse>('/marketplace/buy', {
+      ingredientId,
+      quantity,
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Erreur lors de l'achat");
+  }
+};
+
+/**
+ * 📦 Récupérer l'inventaire du joueur
+ *
+ * @returns Liste des ingrédients en stock avec leurs quantités
+ */
+export const getInventory = async (): Promise<GetInventoryResponse> => {
+  try {
+    const response = await api.get<GetInventoryResponse>('/inventory');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+        "Erreur lors de la récupération de l'inventaire"
+    );
+  }
+};
+
 export default api;

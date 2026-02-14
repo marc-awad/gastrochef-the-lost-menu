@@ -20,16 +20,14 @@ import { Laboratory } from './pages/Laboratory';
 import { RecipeBook } from './pages/RecipeBook';
 import Service from './pages/Service';
 import GameOver from './pages/GameOver';
+import Marketplace from './pages/Marketplace'; // ✅ NOUVEAU
 
 function App() {
   return (
     <AuthProvider>
       <GameProvider>
         <Router>
-          {/* ✅ NOUVEAU : Listener pour Game Over (doit être dans Router) */}
           <GameOverListener />
-
-          {/* Toast notifications */}
           <Toaster position="top-right" richColors />
 
           <Routes>
@@ -37,8 +35,6 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-
-            {/* ✅ NOUVEAU : Route Game Over (accessible sans protection) */}
             <Route path="/game-over" element={<GameOver />} />
 
             {/* Routes Protégées avec Navbar */}
@@ -66,6 +62,17 @@ function App() {
                 <ProtectedRoute>
                   <Navbar />
                   <Service />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ✅ NOUVEAU : Marketplace */}
+            <Route
+              path="/marketplace"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <Marketplace />
                 </ProtectedRoute>
               }
             />
