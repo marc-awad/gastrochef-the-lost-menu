@@ -20,7 +20,8 @@ import { Laboratory } from './pages/Laboratory';
 import { RecipeBook } from './pages/RecipeBook';
 import Service from './pages/Service';
 import GameOver from './pages/GameOver';
-import Marketplace from './pages/Marketplace'; // ✅ NOUVEAU
+import Marketplace from './pages/Marketplace';
+import Dashboard from './pages/Dashboard';
 
 function App() {
   return (
@@ -76,7 +77,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
             {/* Redirection par défaut */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
