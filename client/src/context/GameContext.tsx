@@ -38,66 +38,67 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!token) return;
 
-    const timeout = setTimeout(() => {
-      const socket = getSocket();
-      if (!socket) return;
+    const socket = getSocket();
+    if (!socket) return;
 
-      // Nettoyer avant de brancher pour éviter les doublons
-      socket.off('stats_update');
-      socket.off('stars_updated');
-      socket.off('game_over');
-
-      // ✅ stats_update : source de vérité unique
-      // Le premier reçu juste après connexion contient les vraies stats BDD
-      socket.on('stats_update', (data: Partial<GameStats>) => {
-        console.log('📊 [GameContext] stats_update reçu:', data);
-        setStats((prev) => ({ ...prev, ...data }));
-      });
-
-      // ⭐ TICKET #020 : Événement stars_updated
-      socket.on('stars_updated', (data: { stars: number }) => {
-        console.log('⭐ [GameContext] stars_updated reçu:', data);
-        setStats((prev) => ({ ...prev, stars: data.stars }));
-      });
-
-      // ⭐ TICKET #020 : Incrémenter failedOrders lors d'une expiration
-      socket.on('order_expired', (data: { orderId: number }) => {
-        console.log('⏰ [GameContext] order_expired reçu:', data);
-        setStats((prev) => ({ ...prev, failedOrders: prev.failedOrders + 1 }));
-      });
-
-      socket.on(
-        'game_over',
-        (data: {
-          reason: string;
-          satisfaction?: number;
-          treasury?: number;
-          stars?: number;
-        }) => {
-          console.log('💀 [GameContext] game_over reçu:', data);
-          setStats((prev) => ({
-            ...prev,
-            ...(data.satisfaction !== undefined && {
-              satisfaction: data.satisfaction,
-            }),
-            ...(data.treasury !== undefined && { treasury: data.treasury }),
-            ...(data.stars !== undefined && { stars: data.stars }),
-          }));
-        }
-      );
-    }, 100);
-
-    return () => {
-      clearTimeout(timeout);
-      const socket = getSocket();
-      if (socket) {
-        socket.off('stats_update');
-        socket.off('stars_updated');
-        socket.off('order_expired');
-        socket.off('game_over');
-      }
+    // ✅ BUG #005 FIX : Définir les handlers de manière stable
+    // (pas de nouvelle fonction à chaque render)
+    const handleStatsUpdate = (data: Partial<GameStats>) => {
+      console.log('📊 [GameContext] stats_update reçu:', data);
+      setStats((prev) => ({ ...prev, ...data }));
     };
-  }, [token]);
+
+    const handleStarsUpdated = (data: { stars: number }) => {
+      console.log('⭐ [GameContext] stars_updated reçu:', data);
+      setStats((prev) => ({ ...prev, stars: data.stars }));
+    };
+
+    const handleOrderExpired = (data: { orderId: number }) => {
+      console.log('⏰ [GameContext] order_expired reçu:', data);
+      setStats((prev) => ({ ...prev, failedOrders: prev.failedOrders + 1 }));
+    };
+
+    const handleGameOver = (data: {
+      reason: string;
+      satisfaction?: number;
+      treasury?: number;
+      stars?: number;
+    }) => {
+      console.log('💀 [GameContext] game_over reçu:', data);
+      setStats((prev) => ({
+        ...prev,
+        ...(data.satisfaction !== undefined && {
+          satisfaction: data.satisfaction,
+        }),
+        ...(data.treasury !== undefined && { treasury: data.treasury }),
+        ...(data.stars !== undefined && { stars: data.stars }),
+      }));
+    };
+
+    // ✅ BUG #005 FIX : Nettoyer AVANT de brancher
+    // (pour éviter l'accumulation de listeners si le composant remount)
+    socket.off('stats_update', handleStatsUpdate);
+    socket.off('stars_updated', handleStarsUpdated);
+    socket.off('order_expired', handleOrderExpired);
+    socket.off('game_over', handleGameOver);
+
+    // ✅ Brancher les listeners avec les références stables
+    socket.on('stats_update', handleStatsUpdate);
+    socket.on('stars_updated', handleStarsUpdated);
+    socket.on('order_expired', handleOrderExpired);
+    socket.on('game_over', handleGameOver);
+
+    console.log('✅ [GameContext] Listeners WebSocket branchés');
+
+    // ✅ BUG #005 FIX : Cleanup au unmount
+    return () => {
+      console.log('🧹 [GameContext] Nettoyage des listeners');
+      socket.off('stats_update', handleStatsUpdate);
+      socket.off('stars_updated', handleStarsUpdated);
+      socket.off('order_expired', handleOrderExpired);
+      socket.off('game_over', handleGameOver);
+    };
+  }, [token]); // ✅ Dépendance unique et stable
 
   const updateStats = (newStats: Partial<GameStats>) => {
     setStats((prev) => ({ ...prev, ...newStats }));
@@ -113,6 +114,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   // ✅ resetStats remet le state local ET appelle l'API reset (depuis GameOver.tsx)
   const resetStats = () => {
+    console.log('🔄 [GameContext] Reset des stats');
     setStats(initialStats);
   };
 

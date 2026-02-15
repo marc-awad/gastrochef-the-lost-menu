@@ -5,6 +5,7 @@ import http from 'http';
 import sequelize from './config/db';
 import orderRoutes from './routes/order';
 import './models/index';
+import './config/env';
 import authRoutes from './routes/auth';
 import recipeRoutes from './routes/recipes';
 import ingredientRoutes from './routes/ingredients';

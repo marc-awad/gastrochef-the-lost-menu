@@ -4,15 +4,20 @@ import { Ingredient } from '../models/Ingredient';
 import { RecipeIngredient } from '../models/RecipeIngredient';
 import { UserDiscoveredRecipe } from '../models/UserDiscoveredRecipe';
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
-import { User } from '../models/User';
+import sequelize from '../config/db';
 
 const router = Router();
 
-// POST /api/laboratory/experiment
+// ─────────────────────────────────────────────────────────────
+//  POST /api/laboratory/experiment
+// ─────────────────────────────────────────────────────────────
 router.post(
   '/experiment',
   authMiddleware,
   async (req: AuthRequest, res: Response) => {
+    // ✅ BUG #004 FIX : Transaction pour éviter la race condition
+    const transaction = await sequelize.transaction();
+
     console.log('\n🧪 ========== DÉBUT EXPÉRIMENTATION ==========');
 
     try {
@@ -27,23 +32,40 @@ router.post(
           : typeof ingredientIds,
       });
 
-      // Validation
+      // ✅ BUG #008 FIX : Validation stricte
       if (
         !ingredientIds ||
         !Array.isArray(ingredientIds) ||
         ingredientIds.length < 2
       ) {
-        console.log('❌ Validation échouée');
+        console.log("❌ Validation échouée: pas assez d'ingrédients");
+        await transaction.rollback();
         return res.status(400).json({
           success: false,
           message: 'Vous devez sélectionner au moins 2 ingrédients',
         });
       }
 
+      // ✅ BUG #008 FIX : Vérifier que ce sont des nombres positifs
+      if (ingredientIds.some((id) => !Number.isInteger(id) || id <= 0)) {
+        console.log('❌ Validation échouée: IDs invalides');
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "IDs d'ingrédients invalides",
+        });
+      }
+
+      // ✅ BUG #008 FIX : Supprimer les doublons
+      const uniqueIds = [...new Set(ingredientIds)];
+      if (uniqueIds.length !== ingredientIds.length) {
+        console.warn('⚠️ Doublons détectés dans ingredientIds:', ingredientIds);
+      }
+
       console.log('✅ Validation OK - Recherche de recette...');
 
-      // Chercher une recette correspondante
-      const matchingRecipe = await findMatchingRecipe(ingredientIds);
+      // ✅ Chercher une recette correspondante (dans la même transaction)
+      const matchingRecipe = await findMatchingRecipe(uniqueIds, transaction);
 
       console.log(
         '📊 Résultat recherche:',
@@ -54,6 +76,7 @@ router.post(
 
       if (!matchingRecipe) {
         console.log('❌ Aucune recette trouvée - Fin\n');
+        await transaction.rollback();
         return res.status(200).json({
           success: false,
           message:
@@ -64,16 +87,18 @@ router.post(
 
       console.log('✅ Recette trouvée, vérification si déjà découverte...');
 
-      // Vérifier si déjà découverte
+      // ✅ BUG #004 FIX : Vérification atomique dans la même transaction
       const alreadyDiscovered = await UserDiscoveredRecipe.findOne({
         where: {
           user_id: userId,
           recipe_id: matchingRecipe.id,
         },
+        transaction, // ✅ Utiliser la même transaction
       });
 
       if (alreadyDiscovered) {
         console.log('🔄 Recette déjà découverte - Fin\n');
+        await transaction.rollback();
         return res.json({
           success: true,
           message: '🔄 Vous avez déjà découvert cette recette !',
@@ -90,15 +115,18 @@ router.post(
 
       console.log('🎉 Nouvelle découverte ! Sauvegarde...');
 
-      // Nouvelle découverte !
-      await UserDiscoveredRecipe.create({
-        user_id: userId!,
-        recipe_id: matchingRecipe.id,
-      });
+      // ✅ BUG #004 FIX : Insertion atomique
+      await UserDiscoveredRecipe.create(
+        {
+          user_id: userId!,
+          recipe_id: matchingRecipe.id,
+        },
+        { transaction } // ✅ Dans la même transaction
+      );
 
       console.log('✅ Sauvegarde OK, récupération détails...');
 
-      // Récupérer la recette complète avec ingrédients
+      // ✅ Récupérer la recette complète avec ingrédients
       const fullRecipe = await Recipe.findByPk(matchingRecipe.id, {
         include: [
           {
@@ -107,6 +135,7 @@ router.post(
             through: { attributes: ['quantity'] },
           },
         ],
+        transaction, // ✅ Dans la même transaction
       });
 
       const ingredients =
@@ -115,6 +144,9 @@ router.post(
           name: ing.name,
           quantity: ing.RecipeIngredient?.quantity || 1,
         })) || [];
+
+      // ✅ Commit atomique de toute la transaction
+      await transaction.commit();
 
       console.log('✅ SUCCESS - Fin\n');
 
@@ -132,6 +164,7 @@ router.post(
         alreadyKnown: false,
       });
     } catch (error) {
+      await transaction.rollback();
       console.error('\n❌ ========== ERREUR SERVEUR ==========');
       console.error('Type:', (error as Error).name);
       console.error('Message:', (error as Error).message);
@@ -141,19 +174,23 @@ router.post(
       return res.status(500).json({
         success: false,
         message: "Erreur serveur lors de l'expérimentation",
-        error: (error as Error).message,
-        type: (error as Error).name,
       });
     }
   }
 );
 
-// Fonction helper pour trouver une recette correspondante
-async function findMatchingRecipe(ingredientIds: number[]) {
+// ─────────────────────────────────────────────────────────────
+//  Helper : Trouver une recette correspondante
+// ─────────────────────────────────────────────────────────────
+// ✅ BUG #004 FIX : Signature modifiée pour accepter une transaction
+async function findMatchingRecipe(
+  ingredientIds: number[],
+  transaction?: any
+): Promise<Recipe | null> {
   try {
     console.log('🔍 findMatchingRecipe - Recherche en base...');
 
-    // Récupérer toutes les recettes avec leurs ingrédients
+    // ✅ Récupérer toutes les recettes avec leurs ingrédients (dans la même transaction)
     const recipes = await Recipe.findAll({
       include: [
         {
@@ -162,6 +199,7 @@ async function findMatchingRecipe(ingredientIds: number[]) {
           through: { attributes: [] },
         },
       ],
+      transaction, // ✅ Utiliser la transaction fournie
     });
 
     console.log(`📊 ${recipes.length} recettes trouvées en base`);
@@ -171,11 +209,11 @@ async function findMatchingRecipe(ingredientIds: number[]) {
       return null;
     }
 
-    // Trier les IDs fournis
+    // ✅ Trier les IDs fournis
     const sortedSelectedIds = [...ingredientIds].sort((a, b) => a - b);
     console.log('🔢 IDs triés:', sortedSelectedIds);
 
-    // Chercher une correspondance
+    // ✅ Chercher une correspondance EXACTE
     for (const recipe of recipes) {
       const recipeIngredients = (recipe as any).Ingredients || [];
 
@@ -192,7 +230,7 @@ async function findMatchingRecipe(ingredientIds: number[]) {
 
       console.log(`  🔍 ${recipe.name}: [${recipeIngredientIds.join(', ')}]`);
 
-      // Comparaison exacte
+      // ✅ Comparaison exacte (même nombre + mêmes IDs)
       if (
         recipeIngredientIds.length === sortedSelectedIds.length &&
         recipeIngredientIds.every(
