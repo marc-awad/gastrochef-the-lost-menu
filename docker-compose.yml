@@ -1,0 +1,81 @@
+services:
+  # Base de données MySQL
+  database:
+    image: mysql:8.0
+    container_name: gastrochef-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-gastrochef}
+      MYSQL_USER: ${DB_USER:-gastrochef_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-userpassword}
+    ports:
+      - "3307:3306"  # Port modifié pour éviter conflit avec MySQL local
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./server/init-db:/docker-entrypoint-initdb.d
+    networks:
+      - gastrochef-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend Node.js/Express
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: gastrochef-server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-gastrochef}
+      DB_USER: ${DB_USER:-gastrochef_user}
+      DB_PASSWORD: ${DB_PASSWORD:-userpassword}
+      JWT_SECRET: ${JWT_SECRET:-your_super_secret_jwt_key_change_in_production}
+      CLIENT_URL: http://localhost:3000
+    ports:
+      - "5000:5000"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - gastrochef-network
+    command: node dist/app.js
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend React/Vite
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: gastrochef-client
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+    networks:
+      - gastrochef-network
+
+# Volumes pour la persistance des données
+volumes:
+  mysql_data:
+    driver: local
+
+# Réseau interne pour la communication entre conteneurs
+networks:
+  gastrochef-network:
+    driver: bridge
