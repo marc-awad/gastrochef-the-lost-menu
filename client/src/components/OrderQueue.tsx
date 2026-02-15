@@ -72,23 +72,24 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
         // ✅ Incrémenter le compteur de commandes servies
         incrementServed();
 
-        // ✅ Feedback visuel amélioré
+        // ✅ Feedback visuel amélioré pour VIP
         toast.success(response.message, {
           icon: order.is_vip ? '⭐' : '✅',
-          duration: 3000,
-          description: `${order.recipe_name} - ${order.price.toFixed(2)}€`,
+          duration: order.is_vip ? 4000 : 3000,
+          description: `${order.recipe_name} - ${order.price.toFixed(2)}€${order.is_vip ? ' (BONUS ×3)' : ''}`,
+          className: order.is_vip ? 'bg-yellow-50 border-yellow-400' : '',
         });
 
         // Suppression optimiste de la commande
         onOrderServed(orderId);
 
-        // ✅ NOUVEAU : Vérifier Game Over après succès
+        // ✅ Vérifier Game Over après succès
         if (response.data?.gameOver) {
           setTimeout(() => {
             if (onGameOver) {
               onGameOver();
             }
-          }, 2000); // Laisser le temps de voir le message
+          }, 2000);
         }
       }
     } catch (error: any) {
@@ -106,7 +107,7 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
       if (error.gameOver && onGameOver) {
         setTimeout(() => {
           onGameOver();
-        }, 2000); // Laisser le temps de voir l'erreur
+        }, 2000);
       }
 
       // Mettre à jour la satisfaction si fournie (commande expirée)
@@ -163,117 +164,181 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
             const isExpired = remainingSeconds <= 0;
             const isLoading = loadingOrderId === order.id;
             const isUrgent = remainingSeconds <= 30 && remainingSeconds > 0;
-            const isAnyLoading = loadingOrderId !== null; // ✅ NOUVEAU
+            const isAnyLoading = loadingOrderId !== null;
 
             return (
               <div
                 key={order.id}
                 className={`
-                  border rounded-lg p-4 transition-all duration-300
+                  relative overflow-hidden rounded-lg transition-all duration-300
                   ${
                     isExpired
-                      ? 'border-red-500 bg-red-50 shadow-lg'
+                      ? 'border-2 border-red-500 bg-red-50 shadow-lg'
                       : isUrgent
-                        ? 'border-orange-400 bg-orange-50 shadow-md'
-                        : 'border-gray-300 bg-white shadow-sm'
+                        ? 'border-2 border-orange-400 bg-orange-50 shadow-md'
+                        : 'border-2 border-gray-300 bg-white shadow-sm'
                   }
-                  ${order.is_vip ? 'ring-2 ring-yellow-400' : ''}
-                  ${isAnyLoading && !isLoading ? 'opacity-60' : ''} 
+                  ${
+                    order.is_vip
+                      ? 'border-4 border-yellow-400 bg-gradient-to-br from-yellow-50 via-white to-yellow-50 shadow-xl ring-4 ring-yellow-200'
+                      : ''
+                  }
+                  ${isAnyLoading && !isLoading ? 'opacity-60' : ''}
+                  ${order.is_vip && !isExpired ? 'animate-pulse-slow' : ''}
                 `}
               >
-                <div className="flex justify-between items-center">
-                  {/* Infos commande */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-lg">
-                        {order.recipe_name}
-                      </h3>
-                      {order.is_vip && (
-                        <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full font-bold">
-                          ⭐ VIP
-                        </span>
+                {/* ⭐ Badge VIP flottant avec animation */}
+                {order.is_vip && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <div className="flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1 rounded-full font-bold text-xs shadow-lg animate-bounce-slow">
+                      <span className="text-base">⭐</span>
+                      <span>VIP</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* ✨ Effet de brillance pour VIP */}
+                {order.is_vip && !isExpired && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-200 to-transparent opacity-20 animate-shimmer"></div>
+                )}
+
+                <div className="p-4 relative z-10">
+                  <div className="flex justify-between items-center">
+                    {/* Infos commande */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3
+                          className={`font-semibold text-lg ${order.is_vip ? 'text-yellow-900' : ''}`}
+                        >
+                          {order.recipe_name}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center gap-4 text-sm">
+                        <p
+                          className={`font-semibold ${order.is_vip ? 'text-yellow-700' : 'text-gray-600'}`}
+                        >
+                          💰 {order.price.toFixed(2)}€
+                          {order.is_vip && (
+                            <span className="ml-1 text-xs text-yellow-600">
+                              (×3 bonus = {(order.price * 3).toFixed(2)}€)
+                            </span>
+                          )}
+                        </p>
+
+                        <p
+                          className={`font-mono ${getTimerClass(remainingSeconds)}`}
+                        >
+                          ⏱️ {formatTime(remainingSeconds)}
+                          {isExpired && ' - EXPIRÉ'}
+                        </p>
+                      </div>
+
+                      {/* Info VIP */}
+                      {order.is_vip && !isExpired && (
+                        <div className="mt-2 text-xs text-yellow-700 font-medium">
+                          ✨ +5 satisfaction | ×3 argent | -1 ⭐ si raté
+                        </div>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm">
-                      <p className="text-gray-600">
-                        💰 {order.price.toFixed(2)}€
-                      </p>
-
-                      <p
-                        className={`font-mono ${getTimerClass(remainingSeconds)}`}
-                      >
-                        ⏱️ {formatTime(remainingSeconds)}
-                        {isExpired && ' - EXPIRÉ'}
-                      </p>
-                    </div>
+                    {/* Bouton Servir */}
+                    <button
+                      onClick={() => handleServeOrder(order.id)}
+                      disabled={isAnyLoading}
+                      className={`
+                        px-6 py-3 rounded-lg font-medium transition-all duration-200 relative
+                        ${
+                          isAnyLoading
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : isExpired
+                              ? 'bg-red-600 text-white hover:bg-red-700'
+                              : order.is_vip
+                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 hover:from-yellow-500 hover:to-yellow-600 shadow-lg hover:shadow-xl transform hover:scale-105'
+                                : 'bg-green-600 text-white hover:bg-green-700'
+                        }
+                      `}
+                    >
+                      {isLoading ? (
+                        <span className="flex items-center gap-2">
+                          <svg
+                            className="animate-spin h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Service...
+                        </span>
+                      ) : (
+                        <>{order.is_vip ? '⭐ ' : ''}🍽️ Servir</>
+                      )}
+                    </button>
                   </div>
 
-                  {/* Bouton Servir */}
-                  <button
-                    onClick={() => handleServeOrder(order.id)}
-                    disabled={isAnyLoading} // ✅ AMÉLIORATION : Désactiver si n'importe quelle commande charge
-                    className={`
-                      px-6 py-3 rounded-lg font-medium transition-all duration-200
-                      ${
-                        isAnyLoading
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : isExpired
-                            ? 'bg-red-600 text-white hover:bg-red-700'
-                            : order.is_vip
-                              ? 'bg-yellow-500 text-yellow-900 hover:bg-yellow-600 shadow-lg'
-                              : 'bg-green-600 text-white hover:bg-green-700'
-                      }
-                    `}
-                  >
-                    {isLoading ? (
-                      <span className="flex items-center gap-2">
-                        <svg
-                          className="animate-spin h-5 w-5"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Service...
-                      </span>
-                    ) : (
-                      '🍽️ Servir'
-                    )}
-                  </button>
-                </div>
-
-                {/* Barre de progression */}
-                {!isExpired && (
-                  <div className="mt-3 h-1 bg-gray-200 rounded-full overflow-hidden">
+                  {/* Barre de progression */}
+                  {!isExpired && (
                     <div
-                      className={`h-full transition-all duration-1000 ${
-                        remainingSeconds <= 30 ? 'bg-red-500' : 'bg-green-500'
-                      }`}
-                      style={{
-                        width: `${Math.max(0, (remainingSeconds / 120) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                )}
+                      className={`mt-3 h-2 bg-gray-200 rounded-full overflow-hidden ${order.is_vip ? 'bg-yellow-100' : ''}`}
+                    >
+                      <div
+                        className={`h-full transition-all duration-1000 ${
+                          order.is_vip
+                            ? 'bg-gradient-to-r from-yellow-400 to-yellow-500'
+                            : remainingSeconds <= 30
+                              ? 'bg-red-500'
+                              : 'bg-green-500'
+                        }`}
+                        style={{
+                          width: `${Math.max(0, (remainingSeconds / 120) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Styles pour les animations personnalisées */}
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-shimmer {
+          animation: shimmer 3s infinite;
+        }
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 2s infinite;
+        }
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.95; }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 3s infinite;
+        }
+      `}</style>
     </div>
   );
 };

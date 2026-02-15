@@ -44,18 +44,45 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
       // Nettoyer avant de brancher pour éviter les doublons
       socket.off('stats_update');
+      socket.off('stars_updated');
       socket.off('game_over');
 
       // ✅ stats_update : source de vérité unique
       // Le premier reçu juste après connexion contient les vraies stats BDD
       socket.on('stats_update', (data: Partial<GameStats>) => {
+        console.log('📊 [GameContext] stats_update reçu:', data);
         setStats((prev) => ({ ...prev, ...data }));
+      });
+
+      // ⭐ TICKET #020 : Événement stars_updated
+      socket.on('stars_updated', (data: { stars: number }) => {
+        console.log('⭐ [GameContext] stars_updated reçu:', data);
+        setStats((prev) => ({ ...prev, stars: data.stars }));
+      });
+
+      // ⭐ TICKET #020 : Incrémenter failedOrders lors d'une expiration
+      socket.on('order_expired', (data: { orderId: number }) => {
+        console.log('⏰ [GameContext] order_expired reçu:', data);
+        setStats((prev) => ({ ...prev, failedOrders: prev.failedOrders + 1 }));
       });
 
       socket.on(
         'game_over',
-        (data: { reason: string; satisfaction: number }) => {
-          setStats((prev) => ({ ...prev, satisfaction: data.satisfaction }));
+        (data: {
+          reason: string;
+          satisfaction?: number;
+          treasury?: number;
+          stars?: number;
+        }) => {
+          console.log('💀 [GameContext] game_over reçu:', data);
+          setStats((prev) => ({
+            ...prev,
+            ...(data.satisfaction !== undefined && {
+              satisfaction: data.satisfaction,
+            }),
+            ...(data.treasury !== undefined && { treasury: data.treasury }),
+            ...(data.stars !== undefined && { stars: data.stars }),
+          }));
         }
       );
     }, 100);
@@ -65,6 +92,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const socket = getSocket();
       if (socket) {
         socket.off('stats_update');
+        socket.off('stars_updated');
+        socket.off('order_expired');
         socket.off('game_over');
       }
     };

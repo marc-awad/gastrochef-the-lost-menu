@@ -23,6 +23,7 @@ import {
   UtensilsCrossed,
   ShoppingCart,
   AlertTriangle,
+  BarChart3,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -42,12 +43,18 @@ export const Navbar = () => {
   const location = useLocation();
 
   // ── Animation trésorerie ─────────────────────────────────
-  // 'idle' | 'gain' | 'loss'
   const [treasuryAnim, setTreasuryAnim] = useState<'idle' | 'gain' | 'loss'>(
     'idle'
   );
   const prevTreasuryRef = useRef<number>(stats.treasury);
   const animTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ⭐ TICKET #020 : Animation étoiles
+  const [starsAnim, setStarsAnim] = useState(false);
+  const prevStarsRef = useRef<number>(stats.stars);
+  const starsAnimTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   // Écoute treasury_updated via WebSocket
   useEffect(() => {
@@ -58,9 +65,17 @@ export const Navbar = () => {
       updateStats({ treasury: data.treasury });
     };
 
+    // ⭐ TICKET #020 : Écoute stars_updated
+    const handleStarsUpdated = (data: { stars: number }) => {
+      updateStats({ stars: data.stars });
+    };
+
     socket.on('treasury_updated', handleTreasuryUpdated);
+    socket.on('stars_updated', handleStarsUpdated);
+
     return () => {
       socket.off('treasury_updated', handleTreasuryUpdated);
+      socket.off('stars_updated', handleStarsUpdated);
     };
   }, [updateStats]);
 
@@ -80,10 +95,28 @@ export const Navbar = () => {
     }
   }, [stats.treasury]);
 
+  // ⭐ TICKET #020 : Animation étoiles
+  useEffect(() => {
+    const prev = prevStarsRef.current;
+    const curr = stats.stars;
+
+    if (prev !== curr) {
+      setStarsAnim(true);
+
+      if (starsAnimTimeoutRef.current)
+        clearTimeout(starsAnimTimeoutRef.current);
+      starsAnimTimeoutRef.current = setTimeout(() => setStarsAnim(false), 1000);
+
+      prevStarsRef.current = curr;
+    }
+  }, [stats.stars]);
+
   // Cleanup timeout au démontage
   useEffect(() => {
     return () => {
       if (animTimeoutRef.current) clearTimeout(animTimeoutRef.current);
+      if (starsAnimTimeoutRef.current)
+        clearTimeout(starsAnimTimeoutRef.current);
     };
   }, []);
 
@@ -128,6 +161,42 @@ export const Navbar = () => {
       return base + 'bg-orange-500 animate-pulse';
     }
     return base + (displayTreasury >= 0 ? 'bg-green-600' : 'bg-red-600');
+  };
+
+  // ⭐ TICKET #020 : Helper étoiles
+  const getStarsDisplay = () => {
+    const maxStars = 3;
+    const stars = [];
+
+    for (let i = 0; i < maxStars; i++) {
+      const isFilled = i < stats.stars;
+      stars.push(
+        <span
+          key={i}
+          className={`
+            inline-block transition-all duration-300
+            ${starsAnim ? 'animate-bounce-star scale-125' : 'scale-100'}
+            ${isFilled ? 'text-yellow-400' : 'text-gray-300'}
+          `}
+          style={{
+            fontSize: '1rem',
+            animationDelay: `${i * 100}ms`,
+          }}
+        >
+          {isFilled ? '⭐' : '☆'}
+        </span>
+      );
+    }
+
+    return stars;
+  };
+
+  // ⭐ TICKET #020 : Couleur badge étoiles
+  const getStarsColor = (): string => {
+    if (stats.stars === 3) return 'bg-yellow-500';
+    if (stats.stars === 2) return 'bg-yellow-600';
+    if (stats.stars === 1) return 'bg-orange-500';
+    return 'bg-red-500';
   };
 
   return (
@@ -192,7 +261,6 @@ export const Navbar = () => {
                 </NavigationMenuLink>
               </NavigationMenuItem>
 
-              {/* ✅ NOUVEAU : lien Marketplace */}
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
                   <Link
@@ -203,6 +271,21 @@ export const Navbar = () => {
                   >
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     Marché
+                  </Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+
+              {/* ✅ NOUVEAU : Dashboard */}
+              <NavigationMenuItem>
+                <NavigationMenuLink asChild>
+                  <Link
+                    to="/dashboard"
+                    className={`group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors
+                      hover:bg-blue-50 hover:text-blue-700 focus:outline-none
+                      ${isActive('/dashboard') ? 'bg-blue-100 text-blue-700' : 'text-gray-700'}`}
+                  >
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Dashboard
                   </Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
@@ -228,16 +311,17 @@ export const Navbar = () => {
               </div>
             </Badge>
 
-            {/* Étoiles */}
+            {/* ⭐ TICKET #020 : Étoiles améliorées */}
             <Badge
               variant="outline"
-              className="bg-yellow-500 text-white border-0 px-3 py-1.5 shadow-md"
+              className={`${getStarsColor()} text-white border-0 px-3 py-2 shadow-lg transition-all duration-300
+                ${stats.stars === 1 ? 'animate-pulse' : ''}`}
             >
-              <Star className="w-4 h-4 mr-1 fill-current" />
-              <span className="font-semibold">{stats.stars}</span>
+              <div className="flex items-center gap-1">{getStarsDisplay()}</div>
+              {stats.stars === 1 && <span className="ml-2 text-xs">⚠️</span>}
             </Badge>
 
-            {/* ✅ Trésorerie avec animation + alerte */}
+            {/* Trésorerie avec animation + alerte */}
             <Badge variant="outline" className={getTreasuryClasses()}>
               {isLowTreasury && treasuryAnim === 'idle' ? (
                 <AlertTriangle className="w-4 h-4 mr-1" />
@@ -278,6 +362,13 @@ export const Navbar = () => {
           </div>
         )}
 
+        {/* ⭐ TICKET #020 : Barre d'alerte étoiles */}
+        {stats.stars === 1 && (
+          <div className="py-2 px-4 bg-gradient-to-r from-orange-500 to-red-500 text-white text-center text-sm font-medium animate-pulse">
+            ⚠️ DERNIÈRE ÉTOILE ! Une commande VIP ratée = Game Over !
+          </div>
+        )}
+
         {/* ── Barre d'alerte trésorerie basse ── */}
         {isLowTreasury && (
           <div className="py-2 px-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-center text-sm font-medium">
@@ -286,6 +377,17 @@ export const Navbar = () => {
           </div>
         )}
       </div>
+
+      {/* ⭐ Styles pour l'animation bounce-star */}
+      <style>{`
+        @keyframes bounce-star {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-5px) scale(1.25); }
+        }
+        .animate-bounce-star {
+          animation: bounce-star 0.6s ease-in-out;
+        }
+      `}</style>
     </nav>
   );
 };

@@ -28,7 +28,10 @@ const emitStats = (
     treasury,
     stars,
   });
-  io.to(`user:${userId}`).emit('treasury_updated', { treasury }); // ✅ TICKET #017
+  io.to(`user:${userId}`).emit('treasury_updated', { treasury });
+
+  // ⭐ TICKET #020 : Événement stars_updated
+  io.to(`user:${userId}`).emit('stars_updated', { stars });
 
   if (satisfaction < 0) {
     io.to(`user:${userId}`).emit('game_over', {
@@ -38,6 +41,10 @@ const emitStats = (
   }
   if (treasury < 0) {
     io.to(`user:${userId}`).emit('game_over', { reason: 'treasury', treasury });
+  }
+  // ⭐ TICKET #020 : Game Over si stars < 1
+  if (stars < 1) {
+    io.to(`user:${userId}`).emit('game_over', { reason: 'stars', stars });
   }
 };
 
@@ -100,12 +107,10 @@ export const serveOrder = async (
 
     if (order.user_id !== userId) {
       await transaction.rollback();
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: 'Cette commande ne vous appartient pas',
-        });
+      res.status(403).json({
+        success: false,
+        message: 'Cette commande ne vous appartient pas',
+      });
       return;
     }
 
@@ -147,8 +152,21 @@ export const serveOrder = async (
         (currentTreasury - financialPenalty).toFixed(2)
       );
 
+      // ⭐ TICKET #020 : Perte d'étoile si commande VIP ratée
+      let newStars = currentStars;
+      if (order.is_vip && currentStars > 0) {
+        newStars = currentStars - 1;
+        console.log(
+          `⭐ [VIP FAILED] userId=${userId} | stars: ${currentStars} → ${newStars}`
+        );
+      }
+
       await user.update(
-        { satisfaction: newSatisfaction, treasury: newTreasury },
+        {
+          satisfaction: newSatisfaction,
+          treasury: newTreasury,
+          stars: newStars,
+        },
         { transaction }
       );
 
@@ -158,7 +176,7 @@ export const serveOrder = async (
           user_id: userId,
           type: 'vip_penalty',
           amount: -financialPenalty,
-          description: `Pénalité commande expirée : ${(order as any).recipe?.name ?? 'Recette inconnue'}${order.is_vip ? ' (VIP)' : ''}`,
+          description: `Pénalité commande expirée : ${(order as any).recipe?.name ?? 'Recette inconnue'}${order.is_vip ? ' (VIP ⭐)' : ''}`,
           balance_after: newTreasury,
           created_at: new Date(),
         },
@@ -167,23 +185,28 @@ export const serveOrder = async (
 
       await transaction.commit();
 
-      emitStats(userId, newSatisfaction, newTreasury, currentStars);
+      emitStats(userId, newSatisfaction, newTreasury, newStars);
 
-      const isGameOver = newSatisfaction < 0 || newTreasury < 0;
+      const isGameOver = newSatisfaction < 0 || newTreasury < 0 || newStars < 1;
 
       res.status(400).json({
         success: false,
-        message: `Commande expirée ! (-${satisfactionPenalty} satisfaction, -${financialPenalty.toFixed(2)}€)`,
+        message: order.is_vip
+          ? `⭐ Commande VIP expirée ! (-${satisfactionPenalty} satisfaction, -${financialPenalty.toFixed(2)}€${newStars < currentStars ? ', -1 étoile' : ''})`
+          : `Commande expirée ! (-${satisfactionPenalty} satisfaction, -${financialPenalty.toFixed(2)}€)`,
         data: {
           satisfaction: newSatisfaction,
           treasury: newTreasury,
+          stars: newStars,
           gameOver: isGameOver,
           gameOverReason:
-            newSatisfaction < 0
-              ? 'satisfaction'
-              : newTreasury < 0
-                ? 'treasury'
-                : null,
+            newStars < 1
+              ? 'stars'
+              : newSatisfaction < 0
+                ? 'satisfaction'
+                : newTreasury < 0
+                  ? 'treasury'
+                  : null,
         },
       });
       return;
@@ -197,12 +220,10 @@ export const serveOrder = async (
 
     if (!discoveredRecipe) {
       await transaction.rollback();
-      res
-        .status(400)
-        .json({
-          success: false,
-          message: "Vous n'avez pas encore découvert cette recette !",
-        });
+      res.status(400).json({
+        success: false,
+        message: "Vous n'avez pas encore découvert cette recette !",
+      });
       return;
     }
 
@@ -282,10 +303,12 @@ export const serveOrder = async (
     // ── 6. Mettre à jour la commande, satisfaction et trésorerie ──
     await order.update({ status: 'served' }, { transaction });
 
+    // ⭐ TICKET #020 : Bonus VIP ×3 pour le gain financier
     const satisfactionBonus = order.is_vip ? 5 : 1;
     const orderPrice = parseFloat(String(order.price));
+    const finalPrice = order.is_vip ? orderPrice * 3 : orderPrice; // Gain ×3 si VIP
     const newSatisfaction = currentSatisfaction + satisfactionBonus;
-    const newTreasury = parseFloat((currentTreasury + orderPrice).toFixed(2));
+    const newTreasury = parseFloat((currentTreasury + finalPrice).toFixed(2));
 
     await user.update(
       { satisfaction: newSatisfaction, treasury: newTreasury },
@@ -297,8 +320,8 @@ export const serveOrder = async (
       {
         user_id: userId,
         type: 'order_revenue',
-        amount: orderPrice,
-        description: `Vente : ${(order as any).recipe?.name ?? 'Recette inconnue'}${order.is_vip ? ' (VIP ⭐)' : ''}`,
+        amount: finalPrice,
+        description: `Vente : ${(order as any).recipe?.name ?? 'Recette inconnue'}${order.is_vip ? ' (VIP ⭐ ×3)' : ''}`,
         balance_after: newTreasury,
         created_at: new Date(),
       },
@@ -309,35 +332,33 @@ export const serveOrder = async (
 
     emitStats(userId, newSatisfaction, newTreasury, currentStars);
 
-    // Game Over check (cas rare : treasury négative après une vente n'arrive pas,
-    // mais on garde la logique complète pour cohérence)
     const isGameOver =
       newSatisfaction < 0 || newTreasury < 0 || currentStars < 1;
 
     res.status(200).json({
       success: true,
       message: order.is_vip
-        ? `⭐ Commande VIP servie ! (+${satisfactionBonus} satisfaction, +${orderPrice.toFixed(2)}€)`
+        ? `⭐ Commande VIP servie ! (+${satisfactionBonus} satisfaction, +${finalPrice.toFixed(2)}€ [×3 bonus])`
         : `Commande servie ! (+${satisfactionBonus} satisfaction, +${orderPrice.toFixed(2)}€)`,
       data: {
         orderId: order.id,
         satisfaction: newSatisfaction,
         treasury: newTreasury,
+        stars: currentStars,
         recipeName: (order as any).recipe?.name ?? 'Recette inconnue',
         isVip: order.is_vip,
         satisfactionBonus,
+        finalPrice,
         gameOver: isGameOver,
       },
     });
   } catch (error) {
     await transaction.rollback();
     console.error('❌ Erreur lors du service de la commande:', error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: 'Erreur serveur lors du service de la commande',
-      });
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors du service de la commande',
+    });
   }
 };
 
@@ -438,6 +459,9 @@ export const cleanupExpiredOrders = async (
         return total + p;
       }, 0);
 
+      // ⭐ TICKET #020 : Compter les étoiles perdues (1 par VIP ratée)
+      const vipFailedCount = reallyExpired.filter((o) => o.is_vip).length;
+
       const user = await User.findOne({ where: { id: userId }, transaction });
 
       if (user) {
@@ -445,9 +469,14 @@ export const cleanupExpiredOrders = async (
         const newTreasury = parseFloat(
           (parseFloat(String(user.treasury)) - financialPenalty).toFixed(2)
         );
+        const newStars = Math.max(0, user.stars - vipFailedCount);
 
         await user.update(
-          { satisfaction: newSatisfaction, treasury: newTreasury },
+          {
+            satisfaction: newSatisfaction,
+            treasury: newTreasury,
+            stars: newStars,
+          },
           { transaction }
         );
 
@@ -458,7 +487,7 @@ export const cleanupExpiredOrders = async (
               user_id: userId,
               type: 'vip_penalty',
               amount: -financialPenalty,
-              description: `Pénalité ${reallyExpired.length} commande(s) expirée(s)`,
+              description: `Pénalité ${reallyExpired.length} commande(s) expirée(s)${vipFailedCount > 0 ? ` (dont ${vipFailedCount} VIP)` : ''}`,
               balance_after: newTreasury,
               created_at: new Date(),
             },
@@ -468,7 +497,7 @@ export const cleanupExpiredOrders = async (
 
         await transaction.commit();
 
-        emitStats(userId, newSatisfaction, newTreasury, user.stars);
+        emitStats(userId, newSatisfaction, newTreasury, newStars);
 
         res.status(200).json({
           success: true,
@@ -477,9 +506,11 @@ export const cleanupExpiredOrders = async (
             expiredCount: reallyExpired.length,
             satisfactionPenalty,
             financialPenalty,
+            starsLost: user.stars - newStars,
             satisfaction: newSatisfaction,
             treasury: newTreasury,
-            gameOver: newSatisfaction < 0 || newTreasury < 0,
+            stars: newStars,
+            gameOver: newSatisfaction < 0 || newTreasury < 0 || newStars < 1,
           },
         });
         return;
@@ -490,7 +521,12 @@ export const cleanupExpiredOrders = async (
     res.status(200).json({
       success: true,
       message: 'Aucune commande expirée',
-      data: { expiredCount: 0, satisfactionPenalty: 0, financialPenalty: 0 },
+      data: {
+        expiredCount: 0,
+        satisfactionPenalty: 0,
+        financialPenalty: 0,
+        starsLost: 0,
+      },
     });
   } catch (error) {
     await transaction.rollback();

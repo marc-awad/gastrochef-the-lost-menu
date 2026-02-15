@@ -32,13 +32,13 @@ function App() {
           <Toaster position="top-right" richColors />
 
           <Routes>
-            {/* Routes Publiques */}
+            {/* Routes Publiques (sans GameHeader) */}
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/game-over" element={<GameOver />} />
 
-            {/* Routes Protégées avec Navbar */}
+            {/* Routes Protégées avec Navbar uniquement */}
             <Route
               path="/laboratory"
               element={
@@ -66,8 +66,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-
-            {/* ✅ NOUVEAU : Marketplace */}
             <Route
               path="/marketplace"
               element={
@@ -86,6 +84,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             {/* Redirection par défaut */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

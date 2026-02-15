@@ -60,12 +60,16 @@ const generateOrderForUser = async (
       created_at: order.created_at,
     };
 
-    // ✅ ROOM DEBUG : afficher exactement dans quelle room on émet
     const room = `user:${userId}`;
     console.log(
-      `📦 [NEW ORDER] id=${order.id} | room="${room}" | recette="${recipe.name}"`
+      `📦 [NEW ORDER] id=${order.id} | room="${room}" | recette="${recipe.name}"${isVip ? ' ⭐ VIP' : ''}`
     );
     io.to(room).emit('new_order', payload);
+
+    // ⭐ TICKET #020 : Événement distinct pour les commandes VIP
+    if (isVip) {
+      io.to(room).emit('vip_order', payload);
+    }
   } catch (err) {
     console.error(
       `❌ [ORDERS] Erreur génération userId=${userId}:`,
@@ -75,7 +79,7 @@ const generateOrderForUser = async (
 };
 
 // ─── Expiry watcher ───────────────────────────────────────────
-let expiryWatcherCount = 0; // ✅ DEBUG : détecter les instances multiples
+let expiryWatcherCount = 0;
 
 const startExpiryWatcher = (io: Server): NodeJS.Timeout => {
   expiryWatcherCount++;
@@ -113,11 +117,23 @@ const startExpiryWatcher = (io: Server): NodeJS.Timeout => {
           const penalty = order.is_vip ? 20 : 10;
           const newSatisfaction = user.satisfaction - penalty;
 
+          // ⭐ TICKET #020 : Perte d'étoile si commande VIP ratée
+          let newStars = user.stars;
+          if (order.is_vip && user.stars > 0) {
+            newStars = user.stars - 1;
+            console.log(
+              `⭐ [EXPIRY VIP] orderId=${order.id} | userId=${order.user_id} | stars: ${user.stars} → ${newStars}`
+            );
+          }
+
           console.log(
             `⏰ [EXPIRY] orderId=${order.id} | userId=${order.user_id} | satisfaction: ${user.satisfaction} → ${newSatisfaction} (pénalité=${penalty})`
           );
 
-          await user.update({ satisfaction: newSatisfaction }, { transaction });
+          await user.update(
+            { satisfaction: newSatisfaction, stars: newStars },
+            { transaction }
+          );
           await transaction.commit();
 
           const room = `user:${order.user_id}`;
@@ -126,13 +142,33 @@ const startExpiryWatcher = (io: Server): NodeJS.Timeout => {
           );
 
           io.to(room).emit('order_expired', { orderId: order.id });
-          io.to(room).emit('stats_update', { satisfaction: newSatisfaction });
+          io.to(room).emit('stats_update', {
+            satisfaction: newSatisfaction,
+            stars: newStars,
+          });
 
+          // ⭐ TICKET #020 : Événement stars_updated
+          if (order.is_vip && newStars !== user.stars) {
+            io.to(room).emit('stars_updated', { stars: newStars });
+          }
+
+          // ⭐ TICKET #020 : Game Over si stars < 1
           if (newSatisfaction < 0) {
-            console.log(`💀 [EXPIRY] GAME OVER userId=${order.user_id}`);
+            console.log(
+              `💀 [EXPIRY] GAME OVER userId=${order.user_id} (satisfaction)`
+            );
             io.to(room).emit('game_over', {
               reason: 'satisfaction',
               satisfaction: newSatisfaction,
+            });
+          }
+          if (newStars < 1) {
+            console.log(
+              `💀 [EXPIRY] GAME OVER userId=${order.user_id} (stars)`
+            );
+            io.to(room).emit('game_over', {
+              reason: 'stars',
+              stars: newStars,
             });
           }
         } catch (err) {
