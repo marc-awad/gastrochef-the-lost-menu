@@ -11,6 +11,7 @@ import ingredientRoutes from './routes/ingredients';
 import laboratoryRoutes from './routes/laboratory';
 import { initSockets } from './sockets/index';
 import marketplaceRoutes from './routes/marketplace';
+import { initExpirationCron } from './cron/expirationCron';
 
 dotenv.config();
 
@@ -44,6 +45,8 @@ const server = http.createServer(app);
 export const io = initSockets(server);
 
 const PORT = process.env.PORT || 5000;
+initExpirationCron();
+
 server.listen(PORT, () =>
   console.log(`✅ Server running on port ${PORT} (HTTP + WebSocket)`)
 );

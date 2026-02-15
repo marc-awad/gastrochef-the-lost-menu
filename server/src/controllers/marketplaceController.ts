@@ -6,12 +6,14 @@ import { User, Ingredient, Inventory, Transaction } from '../models';
 // ============================================================
 //  GET /api/inventory
 //  Retourne le stock actuel de l'utilisateur connecté
+//  ✅ TICKET #021 : Agrégation par ingrédient + info expiration
 // ============================================================
 export const getInventory = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
 
-    const inventory = await Inventory.findAll({
+    // ✅ TICKET #021 : Récupérer TOUTES les lignes (FIFO)
+    const inventoryLines = await Inventory.findAll({
       where: { user_id: userId },
       include: [
         {
@@ -20,12 +22,70 @@ export const getInventory = async (req: AuthRequest, res: Response) => {
           attributes: ['id', 'name', 'price'],
         },
       ],
-      order: [[{ model: Ingredient, as: 'ingredient' }, 'name', 'ASC']],
+      order: [
+        ['ingredient_id', 'ASC'],
+        ['expiration_date', 'ASC'], // FIFO : les plus anciens en premier
+      ],
+    });
+
+    // ✅ Agrégation par ingrédient avec infos d'expiration
+    const aggregated: Record<
+      number,
+      {
+        ingredient_id: number;
+        ingredient_name: string;
+        ingredient_price: number;
+        total_quantity: number;
+        lines: Array<{
+          id: number;
+          quantity: number;
+          purchased_at: Date;
+          expiration_date: Date;
+          days_until_expiration: number;
+          status: 'fresh' | 'warning' | 'critical' | 'expired';
+        }>;
+      }
+    > = {};
+
+    const now = new Date();
+
+    inventoryLines.forEach((line: any) => {
+      const ingredientId = line.ingredient_id;
+      const expirationDate = new Date(line.expiration_date);
+      const msUntilExpiration = expirationDate.getTime() - now.getTime();
+      const daysUntilExpiration = Math.ceil(
+        msUntilExpiration / (1000 * 60 * 60 * 24)
+      );
+
+      let status: 'fresh' | 'warning' | 'critical' | 'expired' = 'fresh';
+      if (daysUntilExpiration < 0) status = 'expired';
+      else if (daysUntilExpiration < 1) status = 'critical';
+      else if (daysUntilExpiration <= 3) status = 'warning';
+
+      if (!aggregated[ingredientId]) {
+        aggregated[ingredientId] = {
+          ingredient_id: ingredientId,
+          ingredient_name: line.ingredient?.name || 'Inconnu',
+          ingredient_price: parseFloat(line.ingredient?.price || 0),
+          total_quantity: 0,
+          lines: [],
+        };
+      }
+
+      aggregated[ingredientId].total_quantity += line.quantity;
+      aggregated[ingredientId].lines.push({
+        id: line.id,
+        quantity: line.quantity,
+        purchased_at: line.purchased_at,
+        expiration_date: line.expiration_date,
+        days_until_expiration: daysUntilExpiration,
+        status,
+      });
     });
 
     return res.status(200).json({
       success: true,
-      data: inventory,
+      data: Object.values(aggregated),
     });
   } catch (error) {
     console.error('❌ [getInventory]', error);
@@ -37,14 +97,8 @@ export const getInventory = async (req: AuthRequest, res: Response) => {
 //  POST /api/marketplace/buy
 //  Body : { ingredientId: number, quantity: number }
 //
-//  Logique :
-//  1. Vérifier que l'ingrédient existe
-//  2. Calculer le coût total
-//  3. Vérifier que l'utilisateur a les fonds
-//  4. Transaction atomique :
-//     a. Débiter la trésorerie
-//     b. Upsert inventory (INSERT ou UPDATE quantity)
-//     c. Créer une entrée Transaction
+//  ✅ TICKET #021 : Calcul expiration_date (achat + 7 jours)
+//  ✅ Création d'une NOUVELLE ligne à chaque achat (FIFO)
 // ============================================================
 export const buyIngredient = async (req: AuthRequest, res: Response) => {
   const userId = req.userId!;
@@ -114,32 +168,24 @@ export const buyIngredient = async (req: AuthRequest, res: Response) => {
       { where: { id: userId }, transaction: t }
     );
 
-    // ── 4b. Upsert inventory ─────────────────────────────────
-    // On cherche d'abord une ligne existante pour cet user + ingrédient
-    const existingStock = await Inventory.findOne({
-      where: { user_id: userId, ingredient_id: ingredientId },
-      transaction: t,
-    });
+    // ── 4b. ✅ TICKET #021 : Créer une NOUVELLE ligne avec expiration ──
+    const now = new Date();
+    const expirationDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 jours
 
-    if (existingStock) {
-      await Inventory.update(
-        { quantity: existingStock.quantity + parsedQuantity },
-        {
-          where: { user_id: userId, ingredient_id: ingredientId },
-          transaction: t,
-        }
-      );
-    } else {
-      await Inventory.create(
-        {
-          user_id: userId,
-          ingredient_id: ingredientId,
-          quantity: parsedQuantity,
-          purchased_at: new Date(),
-        },
-        { transaction: t }
-      );
-    }
+    await Inventory.create(
+      {
+        user_id: userId,
+        ingredient_id: ingredientId,
+        quantity: parsedQuantity,
+        purchased_at: now,
+        expiration_date: expirationDate,
+      },
+      { transaction: t }
+    );
+
+    console.log(
+      `📦 [BUY] userId=${userId} | x${parsedQuantity} ${ingredient.name} | expire le ${expirationDate.toISOString()}`
+    );
 
     // ── 4c. Créer la transaction financière ──────────────────
     await Transaction.create(
@@ -158,12 +204,13 @@ export const buyIngredient = async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      message: `✅ Achat effectué : x${parsedQuantity} ${ingredient.name}`,
+      message: `✅ Achat effectué : x${parsedQuantity} ${ingredient.name} (expire le ${expirationDate.toLocaleDateString('fr-FR')})`,
       data: {
         ingredientName: ingredient.name,
         quantity: parsedQuantity,
         totalCost,
         newTreasury,
+        expirationDate,
       },
     });
   } catch (error) {

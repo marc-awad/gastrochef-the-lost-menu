@@ -227,7 +227,7 @@ export const serveOrder = async (
       return;
     }
 
-    // ── 4. Vérifier le stock des ingrédients ──────────────────────
+    // ── 4. ✅ TICKET #021 : Vérifier le stock avec FIFO ──────────────────
     const recipeIngredients: Array<{
       ingredient_id: number;
       quantity: number;
@@ -247,18 +247,24 @@ export const serveOrder = async (
       available: number;
     }> = [];
 
+    // ✅ TICKET #021 : Vérifier le stock total par ingrédient (toutes lignes confondues)
     for (const ri of recipeIngredients) {
-      const stock = await Inventory.findOne({
+      const stockLines = await Inventory.findAll({
         where: { user_id: userId, ingredient_id: ri.ingredient_id },
+        order: [['expiration_date', 'ASC']], // FIFO : les plus anciens en premier
         transaction,
       });
 
-      const available = stock?.quantity ?? 0;
-      if (available < ri.quantity) {
+      const totalAvailable = stockLines.reduce(
+        (sum, line) => sum + line.quantity,
+        0
+      );
+
+      if (totalAvailable < ri.quantity) {
         insufficientIngredients.push({
           ingredient_id: ri.ingredient_id,
           required: ri.quantity,
-          available,
+          available: totalAvailable,
         });
       }
     }
@@ -273,30 +279,42 @@ export const serveOrder = async (
       return;
     }
 
-    // ── 5. Déduire les ingrédients du stock ───────────────────────
+    // ── 5. ✅ TICKET #021 : Déduire les ingrédients du stock avec FIFO ─────
     for (const ri of recipeIngredients) {
-      const stock = await Inventory.findOne({
+      let remainingToConsume = ri.quantity;
+
+      // Récupérer toutes les lignes de stock pour cet ingrédient, triées par date (FIFO)
+      const stockLines = await Inventory.findAll({
         where: { user_id: userId, ingredient_id: ri.ingredient_id },
+        order: [['expiration_date', 'ASC']], // FIFO : consommer les plus anciens en premier
         transaction,
       });
 
-      if (stock) {
-        const newQty = stock.quantity - ri.quantity;
+      for (const line of stockLines) {
+        if (remainingToConsume <= 0) break;
+
+        const consumeFromThisLine = Math.min(line.quantity, remainingToConsume);
+        const newQty = line.quantity - consumeFromThisLine;
+
+        console.log(
+          `🍽️ [FIFO] userId=${userId} | ingredient=${ri.ingredient_id} | ligne=${line.id} | consommé=${consumeFromThisLine} | reste=${newQty}`
+        );
+
         if (newQty <= 0) {
           // Supprimer la ligne si stock tombe à 0
           await Inventory.destroy({
-            where: { user_id: userId, ingredient_id: ri.ingredient_id },
+            where: { id: line.id },
             transaction,
           });
         } else {
+          // Mettre à jour la quantité restante
           await Inventory.update(
             { quantity: newQty },
-            {
-              where: { user_id: userId, ingredient_id: ri.ingredient_id },
-              transaction,
-            }
+            { where: { id: line.id }, transaction }
           );
         }
+
+        remainingToConsume -= consumeFromThisLine;
       }
     }
 

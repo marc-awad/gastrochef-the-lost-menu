@@ -22,6 +22,7 @@ import Service from './pages/Service';
 import GameOver from './pages/GameOver';
 import Marketplace from './pages/Marketplace';
 import Dashboard from './pages/Dashboard';
+import Inventory from './pages/Inventory'; // ✅ TICKET #021
 
 function App() {
   return (
@@ -32,13 +33,13 @@ function App() {
           <Toaster position="top-right" richColors />
 
           <Routes>
-            {/* Routes Publiques (sans GameHeader) */}
+            {/* Routes Publiques */}
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/game-over" element={<GameOver />} />
 
-            {/* Routes Protégées avec Navbar uniquement */}
+            {/* Routes Protégées avec Navbar */}
             <Route
               path="/laboratory"
               element={
@@ -81,6 +82,16 @@ function App() {
                 <ProtectedRoute>
                   <Navbar />
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            {/* ✅ TICKET #021 : Route Inventaire */}
+            <Route
+              path="/inventory"
+              element={
+                <ProtectedRoute>
+                  <Navbar />
+                  <Inventory />
                 </ProtectedRoute>
               }
             />

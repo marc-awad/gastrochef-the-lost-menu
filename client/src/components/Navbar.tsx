@@ -12,7 +12,6 @@ import {
 import { Badge } from '../libs/components/ui/badge';
 import { Button } from '../libs/components/ui/button';
 import {
-  Star,
   Wallet,
   TrendingUp,
   TrendingDown,
@@ -24,6 +23,7 @@ import {
   ShoppingCart,
   AlertTriangle,
   BarChart3,
+  Package, // ✅ TICKET #021
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -275,7 +275,6 @@ export const Navbar = () => {
                 </NavigationMenuLink>
               </NavigationMenuItem>
 
-              {/* ✅ NOUVEAU : Dashboard */}
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
                   <Link
@@ -286,6 +285,21 @@ export const Navbar = () => {
                   >
                     <BarChart3 className="w-4 h-4 mr-2" />
                     Dashboard
+                  </Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+
+              {/* ✅ TICKET #021 : Inventaire */}
+              <NavigationMenuItem>
+                <NavigationMenuLink asChild>
+                  <Link
+                    to="/inventory"
+                    className={`group inline-flex h-10 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors
+                      hover:bg-violet-50 hover:text-violet-700 focus:outline-none
+                      ${isActive('/inventory') ? 'bg-violet-100 text-violet-700' : 'text-gray-700'}`}
+                  >
+                    <Package className="w-4 h-4 mr-2" />
+                    Inventaire
                   </Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>

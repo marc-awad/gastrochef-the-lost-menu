@@ -7,6 +7,7 @@ export class Inventory extends Model {
   public ingredient_id!: number;
   public quantity!: number;
   public purchased_at!: Date;
+  public expiration_date!: Date; // ✅ TICKET #021
 }
 
 Inventory.init(
@@ -34,18 +35,34 @@ Inventory.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    // ✅ TICKET #021 : Date de péremption (achat + 7 jours)
+    expiration_date: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
   },
   {
     tableName: 'inventory',
     sequelize,
-    timestamps: false, // On gère purchased_at manuellement
+    timestamps: false,
+    // ✅ TICKET #021 : SUPPRESSION de l'index unique pour permettre le FIFO
+    // Maintenant on peut avoir plusieurs lignes pour le même (user_id, ingredient_id)
+    // avec des dates d'achat et d'expiration différentes
     indexes: [
       {
-        // Index unique pour éviter les doublons user+ingredient
-        // On fait un UPDATE quantity au lieu d'INSERT si la ligne existe
-        unique: true,
+        // Index non-unique pour optimiser les requêtes
         fields: ['user_id', 'ingredient_id'],
-        name: 'uq_inventory_user_ingredient',
+        name: 'idx_inventory_user_ingredient',
+      },
+      {
+        // Index pour le tri FIFO (par date d'expiration)
+        fields: ['user_id', 'ingredient_id', 'expiration_date'],
+        name: 'idx_inventory_fifo',
+      },
+      {
+        // Index pour le cron job (trouver les périmés rapidement)
+        fields: ['expiration_date'],
+        name: 'idx_inventory_expiration',
       },
     ],
   }
