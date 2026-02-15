@@ -30,7 +30,6 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
   const [timers, setTimers] = useState<Record<number, number>>({});
   const { updateStats, incrementServed } = useGame();
 
-  // ⏱️ TIMER - Mise à jour toutes les secondes
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date().getTime();
@@ -51,9 +50,6 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
     return () => clearInterval(interval);
   }, [orders]);
 
-  /**
-   * 🍽️ HANDLER - Servir une commande
-   */
   const handleServeOrder = async (orderId: number) => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
@@ -64,15 +60,12 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
       const response = await serveOrder(orderId);
 
       if (response.success) {
-        // Mise à jour de la satisfaction dans le contexte
         if (response.data?.satisfaction !== undefined) {
           updateStats({ satisfaction: response.data.satisfaction });
         }
 
-        // ✅ Incrémenter le compteur de commandes servies
         incrementServed();
 
-        // ✅ Feedback visuel amélioré pour VIP
         toast.success(response.message, {
           icon: order.is_vip ? '⭐' : '✅',
           duration: order.is_vip ? 4000 : 3000,
@@ -80,10 +73,8 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
           className: order.is_vip ? 'bg-yellow-50 border-yellow-400' : '',
         });
 
-        // Suppression optimiste de la commande
         onOrderServed(orderId);
 
-        // ✅ Vérifier Game Over après succès
         if (response.data?.gameOver) {
           setTimeout(() => {
             if (onGameOver) {
@@ -93,7 +84,6 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
         }
       }
     } catch (error: any) {
-      // Afficher l'erreur à l'utilisateur
       const errorMessage =
         error.message || 'Erreur lors du service de la commande';
       onError(errorMessage);
@@ -103,14 +93,12 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
         duration: 4000,
       });
 
-      // Vérifier si c'est un Game Over
       if (error.gameOver && onGameOver) {
         setTimeout(() => {
           onGameOver();
         }, 2000);
       }
 
-      // Mettre à jour la satisfaction si fournie (commande expirée)
       if (error.satisfaction !== undefined) {
         updateStats({ satisfaction: error.satisfaction });
       }
@@ -119,9 +107,6 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
     }
   };
 
-  /**
-   * 📐 HELPER - Formater le temps restant
-   */
   const formatTime = (seconds: number): string => {
     if (seconds <= 0) return '00:00';
 
@@ -131,9 +116,6 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  /**
-   * 🎨 HELPER - Classe CSS selon le temps restant
-   */
   const getTimerClass = (seconds: number): string => {
     if (seconds <= 0) return 'text-red-600 font-bold';
     if (seconds <= 30) return 'text-orange-500 font-semibold';
@@ -142,18 +124,21 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
   };
 
   return (
-    <div className="order-queue space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">📋 File d'attente</h2>
+    <div className="order-queue space-y-3 md:space-y-4">
+      {/* ✅ TICKET #022 : Header responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4">
+        <h2 className="text-xl md:text-2xl font-bold">📋 File d'attente</h2>
         <span className="text-sm text-gray-500">
           {orders.length} commande{orders.length > 1 ? 's' : ''}
         </span>
       </div>
 
       {orders.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <p className="text-gray-500 text-lg">Aucune commande en attente</p>
-          <p className="text-gray-400 text-sm mt-2">
+        <div className="text-center py-8 md:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+          <p className="text-gray-500 text-base md:text-lg">
+            Aucune commande en attente
+          </p>
+          <p className="text-gray-400 text-xs md:text-sm mt-2">
             Les commandes apparaîtront ici en temps réel
           </p>
         </div>
@@ -170,7 +155,7 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
               <div
                 key={order.id}
                 className={`
-                  relative overflow-hidden rounded-lg transition-all duration-300
+                  relative overflow-hidden rounded-lg md:rounded-xl transition-all duration-300
                   ${
                     isExpired
                       ? 'border-2 border-red-500 bg-red-50 shadow-lg'
@@ -187,41 +172,42 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
                   ${order.is_vip && !isExpired ? 'animate-pulse-slow' : ''}
                 `}
               >
-                {/* ⭐ Badge VIP flottant avec animation */}
+                {/* VIP Badge */}
                 {order.is_vip && (
                   <div className="absolute top-2 right-2 z-10">
-                    <div className="flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1 rounded-full font-bold text-xs shadow-lg animate-bounce-slow">
-                      <span className="text-base">⭐</span>
+                    <div className="flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-2 md:px-3 py-1 rounded-full font-bold text-xs shadow-lg animate-bounce-slow">
+                      <span className="text-sm md:text-base">⭐</span>
                       <span>VIP</span>
                     </div>
                   </div>
                 )}
 
-                {/* ✨ Effet de brillance pour VIP */}
+                {/* Effet brillance VIP */}
                 {order.is_vip && !isExpired && (
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-200 to-transparent opacity-20 animate-shimmer"></div>
                 )}
 
-                <div className="p-4 relative z-10">
-                  <div className="flex justify-between items-center">
+                {/* ✅ TICKET #022 : Contenu responsive */}
+                <div className="p-3 md:p-4 relative z-10">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     {/* Infos commande */}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3
-                          className={`font-semibold text-lg ${order.is_vip ? 'text-yellow-900' : ''}`}
+                          className={`font-semibold text-base md:text-lg truncate ${order.is_vip ? 'text-yellow-900' : ''}`}
                         >
                           {order.recipe_name}
                         </h3>
                       </div>
 
-                      <div className="flex items-center gap-4 text-sm">
+                      <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm">
                         <p
                           className={`font-semibold ${order.is_vip ? 'text-yellow-700' : 'text-gray-600'}`}
                         >
                           💰 {order.price.toFixed(2)}€
                           {order.is_vip && (
-                            <span className="ml-1 text-xs text-yellow-600">
-                              (×3 bonus = {(order.price * 3).toFixed(2)}€)
+                            <span className="ml-1 text-xs text-yellow-600 hidden sm:inline">
+                              (×3 = {(order.price * 3).toFixed(2)}€)
                             </span>
                           )}
                         </p>
@@ -234,20 +220,21 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
                         </p>
                       </div>
 
-                      {/* Info VIP */}
+                      {/* Info VIP - Masquée sur très petit écran */}
                       {order.is_vip && !isExpired && (
-                        <div className="mt-2 text-xs text-yellow-700 font-medium">
+                        <div className="mt-2 text-xs text-yellow-700 font-medium hidden sm:block">
                           ✨ +5 satisfaction | ×3 argent | -1 ⭐ si raté
                         </div>
                       )}
                     </div>
 
-                    {/* Bouton Servir */}
+                    {/* ✅ TICKET #022 : Bouton tactile optimisé (48px minimum) */}
                     <button
                       onClick={() => handleServeOrder(order.id)}
                       disabled={isAnyLoading}
                       className={`
-                        px-6 py-3 rounded-lg font-medium transition-all duration-200 relative
+                        px-4 md:px-6 py-3 rounded-lg font-medium transition-all duration-200 relative
+                        min-h-[48px] w-full sm:w-auto
                         ${
                           isAnyLoading
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -260,7 +247,7 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
                       `}
                     >
                       {isLoading ? (
-                        <span className="flex items-center gap-2">
+                        <span className="flex items-center justify-center gap-2">
                           <svg
                             className="animate-spin h-5 w-5"
                             xmlns="http://www.w3.org/2000/svg"
@@ -281,7 +268,7 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
                               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                             ></path>
                           </svg>
-                          Service...
+                          <span className="hidden sm:inline">Service...</span>
                         </span>
                       ) : (
                         <>{order.is_vip ? '⭐ ' : ''}🍽️ Servir</>
@@ -315,7 +302,6 @@ export const OrderQueue: React.FC<OrderQueueProps> = ({
         </div>
       )}
 
-      {/* Styles pour les animations personnalisées */}
       <style>{`
         @keyframes shimmer {
           0% { transform: translateX(-100%); }

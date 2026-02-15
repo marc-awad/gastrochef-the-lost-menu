@@ -1,12 +1,9 @@
-import { useEffect } from 'react';
 import { OrderQueue } from '../components/OrderQueue';
 import { Card } from '../libs/components/ui/card';
 import { Star, TrendingUp, TrendingDown } from 'lucide-react';
 import { useGame } from '../context/GameContext';
 import { useOrders } from '../hooks/useOrders';
 import { toast } from 'sonner';
-
-// ✅ Plus de connectSocket ici — géré globalement dans AuthContext
 
 export default function Service() {
   const { stats } = useGame();
@@ -22,32 +19,36 @@ export default function Service() {
 
   const handleGameOver = () => {
     console.log('Game Over déclenché depuis OrderQueue');
-    // Géré automatiquement par GameOverListener
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-4 md:py-8">
+      {/* ✅ TICKET #022 : Container responsive */}
       <div className="max-w-7xl mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">
+        {/* ✅ TICKET #022 : Title responsive */}
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 mb-4 md:mb-6">
             🍽️ Service en Direct
           </h1>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* ✅ TICKET #022 : Grille stats responsive */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {/* Satisfaction */}
-            <Card className="p-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <Card className="p-4 md:p-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90 mb-1">Satisfaction</p>
-                  <p className="text-3xl font-bold flex items-center gap-2">
+                  <p className="text-xs md:text-sm opacity-90 mb-1">
+                    Satisfaction
+                  </p>
+                  <p className="text-2xl md:text-3xl font-bold flex items-center gap-1 md:gap-2">
                     {stats.satisfaction}
-                    <Star className="w-6 h-6" />
+                    <Star className="w-5 h-5 md:w-6 md:h-6" />
                   </p>
                 </div>
                 {stats.satisfaction >= 15 ? (
-                  <TrendingUp className="w-12 h-12 opacity-50" />
+                  <TrendingUp className="w-10 h-10 md:w-12 md:h-12 opacity-50" />
                 ) : (
-                  <TrendingDown className="w-12 h-12 opacity-50" />
+                  <TrendingDown className="w-10 h-10 md:w-12 md:h-12 opacity-50" />
                 )}
               </div>
               {stats.satisfaction < 10 && (
@@ -58,43 +59,48 @@ export default function Service() {
             </Card>
 
             {/* Étoiles */}
-            <Card className="p-5 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+            <Card className="p-4 md:p-5 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90 mb-1">Étoiles</p>
-                  <p className="text-3xl font-bold">
+                  <p className="text-xs md:text-sm opacity-90 mb-1">Étoiles</p>
+                  <p className="text-2xl md:text-3xl font-bold">
                     {stats.stars}
-                    <span className="text-2xl ml-1">⭐</span>
+                    <span className="text-xl md:text-2xl ml-1">⭐</span>
                   </p>
                 </div>
-                <div className="text-4xl opacity-50">🌟</div>
+                <div className="text-3xl md:text-4xl opacity-50">🌟</div>
               </div>
             </Card>
 
             {/* Commandes servies */}
-            <Card className="p-5 bg-gradient-to-br from-green-500 to-green-600 text-white">
+            <Card className="p-4 md:p-5 bg-gradient-to-br from-green-500 to-green-600 text-white">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90 mb-1">Servies</p>
-                  <p className="text-3xl font-bold">{stats.servedOrders}</p>
+                  <p className="text-xs md:text-sm opacity-90 mb-1">Servies</p>
+                  <p className="text-2xl md:text-3xl font-bold">
+                    {stats.servedOrders}
+                  </p>
                 </div>
-                <div className="text-4xl opacity-50">✅</div>
+                <div className="text-3xl md:text-4xl opacity-50">✅</div>
               </div>
             </Card>
 
             {/* Commandes ratées */}
-            <Card className="p-5 bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+            <Card className="p-4 md:p-5 bg-gradient-to-br from-orange-500 to-orange-600 text-white">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90 mb-1">Ratées</p>
-                  <p className="text-3xl font-bold">{stats.failedOrders}</p>
+                  <p className="text-xs md:text-sm opacity-90 mb-1">Ratées</p>
+                  <p className="text-2xl md:text-3xl font-bold">
+                    {stats.failedOrders}
+                  </p>
                 </div>
-                <div className="text-4xl opacity-50">❌</div>
+                <div className="text-3xl md:text-4xl opacity-50">❌</div>
               </div>
             </Card>
           </div>
         </div>
 
+        {/* ✅ TICKET #022 : OrderQueue déjà responsive */}
         <OrderQueue
           orders={orders}
           onOrderServed={handleOrderServed}

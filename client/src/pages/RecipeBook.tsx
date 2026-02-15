@@ -12,7 +12,6 @@ import {
 } from '../libs/components/ui/card';
 import { Loader2, BookOpen, ChefHat, Clock, Coins } from 'lucide-react';
 
-// Emojis associés par mot-clé dans le nom de la recette
 const getRecipeEmoji = (name: string): string => {
   const n = name.toLowerCase();
   if (n.includes('omelette') || n.includes('œuf') || n.includes('oeuf'))
@@ -54,7 +53,6 @@ const getRecipeEmoji = (name: string): string => {
   return '🍽️';
 };
 
-// Difficulté estimée selon le nombre d'ingrédients
 const getDifficulty = (count: number): { label: string; color: string } => {
   if (count <= 2)
     return {
@@ -77,7 +75,6 @@ const getDifficulty = (count: number): { label: string; color: string } => {
   };
 };
 
-// Temps de préparation estimé (fictif mais cohérent)
 const getPrepTime = (ingredientCount: number): string => {
   const base = ingredientCount * 5;
   return `~${base} min`;
@@ -102,10 +99,9 @@ export function RecipeBook() {
     fetchRecipes();
   }, []);
 
-  // ── Loading ──────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 px-4">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-amber-600" />
           <p className="text-gray-600 font-medium">Ouverture du livre...</p>
@@ -114,18 +110,17 @@ export function RecipeBook() {
     );
   }
 
-  // ── Empty state ───────────────────────────────────────────────
   if (recipes.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="inline-block mb-6 p-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl shadow-xl">
-            <BookOpen className="w-16 h-16 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md mx-auto">
+          <div className="inline-block mb-6 p-4 md:p-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl md:rounded-3xl shadow-xl">
+            <BookOpen className="w-12 h-12 md:w-16 md:h-16 text-white" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-3">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-3">
             Livre vide pour l'instant !
           </h2>
-          <p className="text-gray-500 text-lg">
+          <p className="text-gray-500 text-base md:text-lg">
             Rendez-vous au{' '}
             <a
               href="/laboratory"
@@ -140,26 +135,26 @@ export function RecipeBook() {
     );
   }
 
-  // ── Main ─────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <div className="inline-block mb-4 p-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg">
-            <BookOpen className="w-12 h-12 text-white" />
+      {/* ✅ TICKET #022 : Container responsive */}
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        {/* ✅ TICKET #022 : Header responsive */}
+        <div className="mb-6 md:mb-10 text-center">
+          <div className="inline-block mb-3 md:mb-4 p-3 md:p-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl md:rounded-2xl shadow-lg">
+            <BookOpen className="w-8 h-8 md:w-12 md:h-12 text-white" />
           </div>
-          <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 bg-clip-text text-transparent">
             Livre de Recettes
           </h1>
-          <p className="text-gray-600 text-lg font-medium">
+          <p className="text-gray-600 text-sm md:text-base lg:text-lg font-medium">
             {recipes.length} recette{recipes.length > 1 ? 's' : ''} découverte
             {recipes.length > 1 ? 's' : ''}
           </p>
         </div>
 
-        {/* Grille de cartes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {/* ✅ TICKET #022 : Grille ultra-responsive */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {recipes.map((recipe) => {
             const emoji = getRecipeEmoji(recipe.name);
             const difficulty = getDifficulty(recipe.ingredients.length);
@@ -177,9 +172,9 @@ export function RecipeBook() {
                   overflow-hidden
                 "
               >
-                {/* Bannière colorée avec emoji */}
-                <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-6 flex flex-col items-center justify-center gap-2">
-                  <span className="text-5xl">{emoji}</span>
+                {/* Bannière colorée */}
+                <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-4 md:p-6 flex flex-col items-center justify-center gap-2">
+                  <span className="text-4xl md:text-5xl">{emoji}</span>
                   <span
                     className={`text-xs font-semibold px-2 py-1 rounded-full border ${difficulty.color}`}
                   >
@@ -188,25 +183,25 @@ export function RecipeBook() {
                 </div>
 
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-gray-800 text-lg leading-tight">
+                  <CardTitle className="text-gray-800 text-base md:text-lg leading-tight">
                     {recipe.name}
                   </CardTitle>
-                  <div className="flex items-center gap-3 mt-1">
-                    {/* Prix de vente */}
-                    <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
-                      <Coins className="w-4 h-4" />
+                  <div className="flex items-center gap-2 md:gap-3 mt-1 flex-wrap">
+                    {/* Prix */}
+                    <span className="flex items-center gap-1 text-xs md:text-sm font-semibold text-emerald-600">
+                      <Coins className="w-3 h-3 md:w-4 md:h-4" />
                       {parseFloat(String(recipe.sale_price)).toFixed(2)} €
                     </span>
-                    {/* Temps estimé */}
-                    <span className="flex items-center gap-1 text-sm text-gray-500">
-                      <Clock className="w-4 h-4" />
+                    {/* Temps */}
+                    <span className="flex items-center gap-1 text-xs md:text-sm text-gray-500">
+                      <Clock className="w-3 h-3 md:w-4 md:h-4" />
                       {prepTime}
                     </span>
                   </div>
                 </CardHeader>
 
                 <CardContent className="pt-0">
-                  {/* Date de découverte */}
+                  {/* Date */}
                   <p className="text-xs text-gray-400 mb-3">
                     Découverte le{' '}
                     {new Date(recipe.discovered_at).toLocaleDateString(
@@ -219,7 +214,7 @@ export function RecipeBook() {
                     )}
                   </p>
 
-                  {/* Ingrédients — masqués par défaut, révélés au clic */}
+                  {/* ✅ TICKET #022 : Ingrédients expandables */}
                   <div
                     className={`
                       overflow-hidden transition-all duration-300
@@ -235,7 +230,7 @@ export function RecipeBook() {
                         {recipe.ingredients.map((ing) => (
                           <li
                             key={ing.id}
-                            className="flex justify-between items-center text-sm"
+                            className="flex justify-between items-center text-xs md:text-sm"
                           >
                             <span className="text-gray-700">{ing.name}</span>
                             <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
@@ -247,7 +242,7 @@ export function RecipeBook() {
                     </div>
                   </div>
 
-                  {/* Hint clic */}
+                  {/* Hint */}
                   <p className="text-xs text-gray-400 mt-3 text-center">
                     {isExpanded ? '▲ Réduire' : '▼ Voir les ingrédients'}
                   </p>

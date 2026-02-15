@@ -107,8 +107,6 @@ export default function Marketplace() {
         inventoryRes.data?.data ??
         (Array.isArray(inventoryRes.data) ? inventoryRes.data : []);
 
-      // ✅ FIX : Sequelize renvoie les colonnes DECIMAL comme string depuis MySQL
-      // On force price en number pour pouvoir appeler .toFixed()
       const parsedIngredients: Ingredient[] = rawIngredients.map((ing) => ({
         ...ing,
         price: parseFloat(ing.price),
@@ -202,6 +200,7 @@ export default function Marketplace() {
         }}
       />
 
+      {/* Toast notification */}
       {toast && (
         <div
           className={`fixed top-20 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium shadow-2xl transition-all duration-300 ${
@@ -219,47 +218,54 @@ export default function Marketplace() {
         </div>
       )}
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-10">
+      {/* ✅ TICKET #022 : Container responsive */}
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-4 md:py-8">
+        {/* ✅ TICKET #022 : Header responsive */}
+        <div className="mb-6 md:mb-10">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 rounded-lg bg-amber-500/20 border border-amber-500/30">
-              <ShoppingCart size={24} className="text-amber-400" />
+              <ShoppingCart
+                size={20}
+                className="text-amber-400 md:w-6 md:h-6"
+              />
             </div>
             <h1
-              className="text-4xl font-black tracking-tight"
+              className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight"
               style={{ fontFamily: "'Georgia', serif" }}
             >
               Marché aux <span className="text-amber-400">Ingrédients</span>
             </h1>
           </div>
-          <p className="text-slate-400 ml-14 text-sm">
+          <p className="text-slate-400 ml-11 md:ml-14 text-xs md:text-sm">
             Approvisionnez votre cuisine pour préparer vos recettes
           </p>
         </div>
 
-        <div className="mb-8 flex items-center justify-between bg-slate-800/60 border border-slate-700/50 rounded-2xl px-6 py-4 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <Coins size={20} className="text-amber-400" />
-            <span className="text-slate-400 text-sm font-medium">
+        {/* ✅ TICKET #022 : Trésorerie responsive */}
+        <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-800/60 border border-slate-700/50 rounded-xl md:rounded-2xl px-4 md:px-6 py-3 md:py-4 backdrop-blur-sm">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Coins size={18} className="text-amber-400 md:w-5 md:h-5" />
+            <span className="text-slate-400 text-xs md:text-sm font-medium">
               Trésorerie disponible
             </span>
           </div>
-          <span className="text-2xl font-black text-amber-400 tabular-nums">
+          <span className="text-xl md:text-2xl font-black text-amber-400 tabular-nums">
             {stats.treasury.toFixed(2)}€
           </span>
         </div>
 
+        {/* ✅ TICKET #022 : Grille ultra-responsive - Déjà optimal ! */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
             {Array.from({ length: 20 }).map((_, i) => (
               <div
                 key={i}
-                className="h-52 rounded-2xl bg-slate-800/40 border border-slate-700/30 animate-pulse"
+                className="h-48 md:h-52 rounded-xl md:rounded-2xl bg-slate-800/40 border border-slate-700/30 animate-pulse"
               />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
             {ingredients.map((ingredient) => {
               const Icon = getIcon(ingredient.name);
               const qty = quantities[ingredient.id] ?? 1;
@@ -271,7 +277,7 @@ export default function Marketplace() {
               return (
                 <div
                   key={ingredient.id}
-                  className={`group relative flex flex-col rounded-2xl border bg-slate-800/50 backdrop-blur-sm transition-all duration-200 overflow-hidden ${
+                  className={`group relative flex flex-col rounded-xl md:rounded-2xl border bg-slate-800/50 backdrop-blur-sm transition-all duration-200 overflow-hidden ${
                     canAfford
                       ? 'border-slate-700/50 hover:border-slate-500/70 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/30'
                       : 'border-slate-800/50 opacity-60'
@@ -286,11 +292,14 @@ export default function Marketplace() {
                     </div>
                   )}
 
-                  <div className="flex flex-col items-center pt-6 pb-3 px-4">
-                    <div className="mb-3 p-3 rounded-xl bg-slate-700/50 border border-slate-600/30 group-hover:scale-105 transition-transform duration-200">
-                      <Icon size={28} className="text-slate-200" />
+                  <div className="flex flex-col items-center pt-4 md:pt-6 pb-3 px-3 md:px-4">
+                    <div className="mb-2 md:mb-3 p-2 md:p-3 rounded-lg md:rounded-xl bg-slate-700/50 border border-slate-600/30 group-hover:scale-105 transition-transform duration-200">
+                      <Icon
+                        size={24}
+                        className="text-slate-200 md:w-7 md:h-7"
+                      />
                     </div>
-                    <h3 className="text-sm font-bold text-white text-center leading-tight mb-1">
+                    <h3 className="text-xs md:text-sm font-bold text-white text-center leading-tight mb-1">
                       {ingredient.name}
                     </h3>
                     <div
@@ -300,11 +309,11 @@ export default function Marketplace() {
                     </div>
                   </div>
 
-                  <div className="px-3 pb-3 mt-auto space-y-2">
+                  <div className="px-2 md:px-3 pb-2 md:pb-3 mt-auto space-y-2">
                     <div className="flex items-center justify-between bg-slate-900/60 rounded-lg border border-slate-700/40 overflow-hidden">
                       <button
                         onClick={() => setQty(ingredient.id, qty - 1)}
-                        className="px-2 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+                        className="px-2 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors active:bg-slate-700"
                       >
                         <ChevronDown size={14} />
                       </button>
@@ -316,20 +325,21 @@ export default function Marketplace() {
                         onChange={(e) =>
                           setQty(ingredient.id, parseInt(e.target.value) || 1)
                         }
-                        className="w-10 text-center text-sm font-bold bg-transparent text-white outline-none tabular-nums"
+                        className="w-8 md:w-10 text-center text-xs md:text-sm font-bold bg-transparent text-white outline-none tabular-nums"
                       />
                       <button
                         onClick={() => setQty(ingredient.id, qty + 1)}
-                        className="px-2 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors"
+                        className="px-2 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors active:bg-slate-700"
                       >
                         <ChevronUp size={14} />
                       </button>
                     </div>
 
+                    {/* ✅ TICKET #022 : Bouton tactile optimisé */}
                     <button
                       onClick={() => handleBuy(ingredient)}
                       disabled={!canAfford || isBuying}
-                      className={`w-full py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                      className={`w-full py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 min-h-[44px] ${
                         canAfford && !isBuying
                           ? 'bg-amber-500 hover:bg-amber-400 text-slate-900 shadow-lg shadow-amber-900/30 active:scale-95'
                           : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
@@ -351,11 +361,16 @@ export default function Marketplace() {
           </div>
         )}
 
+        {/* ✅ TICKET #022 : Stock responsive */}
         {Object.keys(inventory).length > 0 && (
-          <div className="mt-10">
-            <div className="flex items-center gap-2 mb-4">
-              <Package size={18} className="text-slate-400" />
-              <h2 className="text-lg font-bold text-slate-200">Mon stock</h2>
+          <div className="mt-6 md:mt-10">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 md:mb-4">
+              <div className="flex items-center gap-2">
+                <Package size={16} className="text-slate-400 md:w-5 md:h-5" />
+                <h2 className="text-base md:text-lg font-bold text-slate-200">
+                  Mon stock
+                </h2>
+              </div>
               <span className="text-xs text-slate-500 font-medium">
                 ({Object.values(inventory).reduce((a, b) => a + b, 0)} unités au
                 total)
@@ -369,7 +384,7 @@ export default function Marketplace() {
                   return (
                     <div
                       key={ing.id}
-                      className="flex items-center gap-1.5 bg-slate-800/70 border border-slate-700/40 rounded-full px-3 py-1.5"
+                      className="flex items-center gap-1.5 bg-slate-800/70 border border-slate-700/40 rounded-full px-2 md:px-3 py-1 md:py-1.5"
                     >
                       <Icon size={12} className="text-slate-400" />
                       <span className="text-xs text-slate-300 font-medium">
