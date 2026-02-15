@@ -4,9 +4,31 @@
 
 ---
 
+## 🚀 Avancement du Projet depuis l'oral
+
+**Développement depuis l'oral (13/02 → 16/02) :**
+
+- ✅ **#15** : Infrastructure financière (tables Transactions + Inventory)
+- ✅ **#16** : Marketplace avec achat d'ingrédients
+- ✅ **#17** : Service avec gestion du stock et trésorerie
+- ✅ **#18** : Affichage trésorerie temps réel dans navbar
+- ✅ **#19** : Dashboard financier complet avec graphiques (Recharts)
+- ✅ **#20** : Système d'étoiles + commandes VIP (bonus ×3)
+- ✅ **#21** : Gestion DLC (FIFO) + cron job expiration
+- ✅ **#22** : Interface responsive (mobile/tablette)
+- ✅ **#23** : Dockerisation complète (docker-compose)
+- ✅ **#24** : UX/animations + design cohérent
+- ✅ **#25** : Tests QA + correction 10 bugs critiques
+- ✅ **#26** : Documentation finale (README + ARCHITECTURE)
+
+**Résultat :** Niveau **18/20 (Chef Étoilé ⭐⭐⭐)** atteint
+
+---
+
 ## 📖 Description
 
 Vous reprenez le restaurant mythique **"La Tour d'Émeraude"**, mais le chef précédent est parti avec le livre de recettes. Vous devez :
+
 - 🧪 Redécouvrir les recettes en expérimentant dans le laboratoire
 - 🍽️ Servir les clients en temps réel avant expiration des commandes
 - 💰 Gérer votre trésorerie (achats, revenus)
@@ -27,6 +49,7 @@ Vous reprenez le restaurant mythique **"La Tour d'Émeraude"**, mais le chef pr�
 ## 📦 Installation
 
 ### Prérequis
+
 - Node.js 18+
 - MySQL 8+ (ou Docker)
 - npm
@@ -98,6 +121,7 @@ CLIENT_URL=http://localhost:5173
 ```
 
 **⚠️ Générer un JWT_SECRET sécurisé :**
+
 ```bash
 # Linux/Mac
 openssl rand -base64 32
@@ -111,6 +135,7 @@ openssl rand -base64 32
 ## 🚀 Commandes
 
 ### Développement
+
 ```bash
 # Backend
 npm run dev          # Démarrer le serveur (ts-node)
@@ -123,6 +148,7 @@ npm run build        # Build de production
 ```
 
 ### Docker
+
 ```bash
 docker-compose up -d              # Démarrer tous les services
 docker-compose logs -f            # Voir les logs
@@ -166,18 +192,21 @@ gastrochef/
 ## ✨ Fonctionnalités
 
 ### Niveau 10/20 : Cuisinier (MVP)
+
 - ✅ Authentification JWT (register + login)
 - ✅ Laboratoire drag & drop
 - ✅ Découverte de recettes (algorithme de matching)
 - ✅ Livre de recettes
 
 ### Niveau 13/20 : Chef de Partie
+
 - ✅ WebSocket temps réel
 - ✅ Service de commandes avec timer
 - ✅ Système de satisfaction (+1 si réussi, -10 si raté)
 - ✅ Game Over si satisfaction < 0
 
 ### Niveau 16/20 : Restaurateur
+
 - ✅ Système monétaire complet
 - ✅ Marketplace (achat d'ingrédients)
 - ✅ Dashboard financier avec graphiques
@@ -185,6 +214,7 @@ gastrochef/
 - ✅ Game Over si trésorerie < 0
 
 ### Niveau 18/20 : Chef Étoilé (⭐⭐⭐)
+
 - ✅ Commandes VIP (bonus ×3 si réussi, -1 étoile si raté)
 - ✅ Système d'étoiles (Game Over si < 1)
 - ✅ Gestion DLC (FIFO) : date de péremption + consommation des stocks les plus anciens
@@ -196,37 +226,42 @@ gastrochef/
 
 ## 🔌 API Endpoints
 
-| Endpoint                      | Méthode | Auth | Description                     |
-| ----------------------------- | ------- | ---- | ------------------------------- |
-| `/api/auth/register`          | POST    | ❌   | Inscription + token             |
-| `/api/auth/login`             | POST    | ❌   | Connexion + token               |
-| `/api/recipes`                | GET     | ❌   | Liste toutes les recettes       |
-| `/api/recipes/user`           | GET     | ✅   | Recettes découvertes            |
-| `/api/laboratory/experiment`  | POST    | ✅   | Tester une combinaison          |
-| `/api/orders`                 | GET     | ✅   | Commandes en attente            |
-| `/api/orders/serve/:id`       | POST    | ✅   | Servir une commande             |
-| `/api/marketplace/buy`        | POST    | ✅   | Acheter des ingrédients         |
-| `/api/marketplace/inventory`  | GET     | ✅   | Stock actuel                    |
-| `/api/dashboard/stats`        | GET     | ✅   | Statistiques globales           |
-| `/api/dashboard/transactions` | GET     | ✅   | Historique des transactions     |
+| Endpoint                      | Méthode | Auth | Description                 |
+| ----------------------------- | ------- | ---- | --------------------------- |
+| `/api/auth/register`          | POST    | ❌   | Inscription + token         |
+| `/api/auth/login`             | POST    | ❌   | Connexion + token           |
+| `/api/recipes`                | GET     | ❌   | Liste toutes les recettes   |
+| `/api/recipes/user`           | GET     | ✅   | Recettes découvertes        |
+| `/api/laboratory/experiment`  | POST    | ✅   | Tester une combinaison      |
+| `/api/orders`                 | GET     | ✅   | Commandes en attente        |
+| `/api/orders/serve/:id`       | POST    | ✅   | Servir une commande         |
+| `/api/marketplace/buy`        | POST    | ✅   | Acheter des ingrédients     |
+| `/api/marketplace/inventory`  | GET     | ✅   | Stock actuel                |
+| `/api/dashboard/stats`        | GET     | ✅   | Statistiques globales       |
+| `/api/dashboard/transactions` | GET     | ✅   | Historique des transactions |
 
 ---
 
 ## 🔧 Troubleshooting
 
 ### Erreur : "Variables d'environnement manquantes"
+
 → Vérifier que `server/.env` existe avec toutes les variables (notamment `JWT_SECRET`)
 
 ### Erreur : "Port 5000 déjà utilisé"
+
 → Tuer le processus : `netstat -ano | findstr :5000` puis `taskkill /PID <PID> /F`
 
 ### Erreur : Connexion à la base de données
+
 → Vérifier que MySQL est démarré et que les credentials sont corrects dans `.env`
 
 ### WebSocket ne se connecte pas
+
 → Vérifier que `VITE_API_URL` dans `client/.env` pointe vers le bon serveur
 
 ### Les commandes n'apparaissent pas
+
 → Découvrir au moins 1 recette dans le laboratoire (le système génère uniquement des commandes pour les recettes découvertes)
 
 ---
@@ -234,6 +269,7 @@ gastrochef/
 ## 🧪 Tester l'Application
 
 ### Flux complet
+
 1. **S'inscrire** : Créer un compte (token retourné automatiquement)
 2. **Laboratoire** : Drag & drop d'ingrédients pour découvrir une recette
 3. **Marketplace** : Acheter des ingrédients (vérifier que la trésorerie diminue)
@@ -241,7 +277,9 @@ gastrochef/
 5. **Dashboard** : Consulter les graphiques de trésorerie et l'historique
 
 ### Recettes de test (après seed)
+
 Essayer ces combinaisons dans le laboratoire :
+
 - Tomate + Mozzarella + Basilic = Margherita
 - Pâtes + Œufs + Bacon + Parmesan = Carbonara
 - _(Voir `server/src/seed.ts` pour toutes les recettes)_
@@ -266,6 +304,7 @@ Projet pédagogique B3 – Usage éducatif uniquement
 **Présentation :** Vendredi devant le groupe
 
 **Livrables :**
+
 - ✅ Lien Git avec README + ARCHITECTURE.md
 - ✅ Code fonctionnel (niveau 18/20 atteint)
 - ✅ Documentation complète
